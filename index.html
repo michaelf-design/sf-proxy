@@ -922,31 +922,19 @@ function buildTranslationXML(fields) {
   let xml = `<?xml version="1.0" encoding="UTF-8"?>\n<Translations xmlns="http://soap.sforce.com/2006/04/metadata">\n`;
 
   Object.entries(byObj).forEach(([objApi, data]) => {
-    const isCustom = objApi.endsWith('__c');
-    if (isCustom) {
-      // Custom objects use <customObjects>
-      xml += `  <customObjects>\n`;
-      xml += `    <name>${escXML(objApi)}</name>\n`;
-      if (data.objHeb) {
-        xml += `    <label>${escXML(data.objHeb)}</label>\n`;
-        xml += `    <pluralLabel>${escXML(data.objHeb)}</pluralLabel>\n`;
-      }
-      data.fields.forEach(f => {
-        xml += `    <customFields>\n`;
-        xml += `      <name>${escXML(f.api.replace('__c',''))}</name>\n`;
-        xml += `      <label>${escXML(f.heb)}</label>\n`;
-        xml += `    </customFields>\n`;
-      });
-      xml += `  </customObjects>\n`;
-    } else {
-      // Standard objects (Account, Contact etc) use <customFields> directly at top level
-      data.fields.forEach(f => {
-        xml += `  <customFields>\n`;
-        xml += `    <name>${escXML(objApi)}.${escXML(f.api.replace('__c',''))}</name>\n`;
-        xml += `    <label>${escXML(f.heb)}</label>\n`;
-        xml += `  </customFields>\n`;
-      });
+    xml += `  <customObjects>\n`;
+    xml += `    <name>${escXML(objApi)}</name>\n`;
+    if (data.objHeb) {
+      xml += `    <label>${escXML(data.objHeb)}</label>\n`;
+      xml += `    <pluralLabel>${escXML(data.objHeb)}</pluralLabel>\n`;
     }
+    data.fields.forEach(f => {
+      xml += `    <customFields>\n`;
+      xml += `      <name>${escXML(f.api.replace('__c',''))}</name>\n`;
+      xml += `      <label>${escXML(f.heb)}</label>\n`;
+      xml += `    </customFields>\n`;
+    });
+    xml += `  </customObjects>\n`;
   });
 
   xml += `</Translations>`;
