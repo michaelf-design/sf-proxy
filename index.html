@@ -827,11 +827,17 @@ function buildTranslationXML(fields){
       });
       xml+=`  </customObjects>\n`;
     } else {
-      // Standard object — <customFields> at top level with "ObjectName.FieldName" format
-      data.fields.forEach(f=>{
-        xml+=`  <customFields>\n    <name>${escXML(objApi)}.${escXML(f.api.replace(/__c$/i,''))}</name>\n    <label>${escXML(f.heb)}</label>\n  </customFields>\n`;
-      });
-    }
+  // Standard object — must use <customObjects> wrapper even for standard objects
+  xml+=`  <customObjects>\n    <name>${escXML(objApi)}</name>\n`;
+  if(data.objHeb){
+    xml+=`    <label>${escXML(data.objHeb)}</label>\n`;
+    xml+=`    <pluralLabel>${escXML(data.objHeb)}</pluralLabel>\n`;
+  }
+  data.fields.forEach(f=>{
+    xml+=`    <customFields>\n      <name>${escXML(f.api.replace(/__c$/i,''))}</name>\n      <label>${escXML(f.heb)}</label>\n    </customFields>\n`;
+  });
+  xml+=`  </customObjects>\n`;
+}
   });
 
   xml+=`</Translations>`;
