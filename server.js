@@ -94,6 +94,8 @@ app.post('/translate-direct', async (req, res) => {
     console.log('=== TRANSLATE DIRECT ===');
     console.log('Object:', objectName, 'Field:', fieldName, 'Label:', hebrewLabel);
 
+    // Use readMetadata first to get existing translations, then updateMetadata
+    // Direct approach: use the correct field translation format
     const soapBody = `<?xml version="1.0" encoding="UTF-8"?>
 <soapenv:Envelope
   xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/"
@@ -108,13 +110,10 @@ app.post('/translate-direct', async (req, res) => {
     <met:upsertMetadata>
       <met:metadata xsi:type="met:Translations">
         <met:fullName>he</met:fullName>
-        <met:customObjects>
-          <met:name>${objectName}</met:name>
-          <met:customFields>
-            <met:name>${fieldName}</met:name>
-            <met:label>${hebrewLabel}</met:label>
-          </met:customFields>
-        </met:customObjects>
+        <met:customFields>
+          <met:name>${objectName}.${fieldName}</met:name>
+          <met:label>${hebrewLabel}</met:label>
+        </met:customFields>
       </met:metadata>
     </met:upsertMetadata>
   </soapenv:Body>
