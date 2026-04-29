@@ -29,7 +29,11 @@ app.post('/api', async (req, res) => {
     const url = req.headers['x-sf-url'];
     const token = req.headers['x-sf-token'];
     const method = req.headers['x-sf-method'] || 'POST';
-    const response = await fetch(url, { method, headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' }, body: method !== 'GET' ? JSON.stringify(req.body) : undefined });
+    const response = await fetch(url, {
+      method,
+      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+      body: method !== 'GET' ? JSON.stringify(req.body) : undefined
+    });
     const data = await response.json();
     res.status(response.status).json(data);
   } catch (e) { res.status(500).json({ error: e.message }); }
@@ -40,61 +44,17 @@ app.post('/metadata-deploy', async (req, res) => {
   try {
     const instanceUrl = req.headers['x-sf-instance'];
     const body = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
-    const response = await fetch(`${instanceUrl}/services/Soap/m/59.0`, { method: 'POST', headers: { 'Content-Type': 'text/xml; charset=UTF-8', 'SOAPAction': '""' }, body });
+    const response = await fetch(`${instanceUrl}/services/Soap/m/59.0`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/xml; charset=UTF-8', 'SOAPAction': '""' },
+      body
+    });
     const text = await response.text();
-    console.log('DEPLOY STATUS:', response.status, text.substring(0, 500));
     res.status(response.status).set('Content-Type', 'text/xml').send(text);
   } catch (e) { res.status(500).send(`<error>${e.message}</error>`); }
 });
 
-// Translation via REST Metadata API (PATCH)
-// Uses /services/data/vXX.0/metadata/Translations/he
-app.post('/translate-rest', async (req, res) => {
-  try {
-    const instanceUrl = req.headers['x-sf-instance'];
-    const token = req.headers['x-sf-token'];
-    const { entries } = req.body;
-    // entries = [{objectName, fieldName, hebrewLabel}]
-
-    console.log('=== TRANSLATE REST ===');
-    console.log('Entries:', JSON.stringify(entries));
-
-    // Build the metadata payload for REST API
-    const customObjects = {};
-    entries.forEach(e => {
-      if (!customObjects[e.objectName]) customObjects[e.objectName] = [];
-      customObjects[e.objectName].push({ name: e.fieldName, label: e.hebrewLabel });
-    });
-
-    const payload = {
-      customObjects: Object.entries(customObjects).map(([name, fields]) => ({
-        name,
-        customFields: fields.map(f => ({ name: f.name, label: f.label }))
-      }))
-    };
-
-    console.log('Payload:', JSON.stringify(payload));
-
-    // Try REST Metadata API PATCH
-    const url = `${instanceUrl}/services/data/v59.0/metadata/Translations/he`;
-    const response = await fetch(url, {
-      method: 'PATCH',
-      headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
-    });
-
-    const text = await response.text();
-    console.log('REST STATUS:', response.status);
-    console.log('REST RESPONSE:', text.substring(0, 800));
-
-    res.status(response.status).send(text);
-  } catch (e) {
-    console.log('TRANSLATE REST ERROR:', e.message);
-    res.status(500).json({ error: e.message });
-  }
-});
-
-// Translation via Tooling API - set field label directly on CustomField
+// Hebrew translation via Tooling API CustomFieldTranslation
 app.post('/translate-tooling', async (req, res) => {
   try {
     const instanceUrl = req.headers['x-sf-instance'];
@@ -104,45 +64,61 @@ app.post('/translate-tooling', async (req, res) => {
     console.log('=== TRANSLATE TOOLING ===');
     console.log('Object:', objectName, 'Field:', fieldApiName, 'Label:', hebrewLabel);
 
-    // Step 1: Find the CustomFieldTranslation record or FieldDefinition
-    // Query for the field's EntityDefinition and DurableId
-    const query = `SELECT Id, DurableId, QualifiedApiName FROM FieldDefinition WHERE EntityDefinition.QualifiedApiName = '${objectName}' AND QualifiedApiName = '${fieldApiName}'`;
-    const qRes = await fetch(`${instanceUrl}/services/data/v59.0/tooling/query?q=${encodeURIComponent(query)}`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
-    const qData = await qRes.json();
-    console.log('Field query result:', JSON.stringify(qData).substring(0, 400));
+    const headers = { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' };
 
-    if (!qData.records || !qData.records.length) {
-      return res.status(404).json({ error: `Field ${fieldApiName} not found on ${objectName}` });
+    // Step 1: Get the field's EntityDefinitionId and DurableId
+    const fieldQuery = `SELECT Id, DurableId, QualifiedApiName, EntityDefinitionId FROM FieldDefinition WHERE EntityDefinition.QualifiedApiName = '${objectName}' AND QualifiedApiName = '${fieldApiName}'`;
+    const fRes = await fetch(`${instanceUrl}/services/data/v59.0/tooling/query?q=${encodeURIComponent(fieldQuery)}`, { headers });
+    const fData = await fRes.json();
+    console.log('Field query:', JSON.stringify(fData).substring(0, 500));
+
+    if (!fData.records || !fData.records.length) {
+      return res.status(404).json({ success: false, error: `Field ${fieldApiName} not found on ${objectName}` });
     }
 
-    const durableId = qData.records[0].DurableId;
-    console.log('DurableId:', durableId);
+    const fieldDurableId = fData.records[0].DurableId;
+    console.log('Field DurableId:', fieldDurableId);
 
-    // Step 2: Try to find existing translation
-    const tQuery = `SELECT Id FROM CustomFieldTranslation WHERE DeveloperName = '${durableId}' AND Language = 'he'`;
-    const tRes = await fetch(`${instanceUrl}/services/data/v59.0/tooling/query?q=${encodeURIComponent(tQuery)}`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
+    // Step 2: Check if translation already exists
+    const tQuery = `SELECT Id FROM CustomFieldTranslation WHERE FieldDefinitionId = '${fieldDurableId}' AND Language = 'he'`;
+    const tRes = await fetch(`${instanceUrl}/services/data/v59.0/tooling/query?q=${encodeURIComponent(tQuery)}`, { headers });
     const tData = await tRes.json();
-    console.log('Translation query:', JSON.stringify(tData).substring(0, 400));
+    console.log('Existing translation:', JSON.stringify(tData).substring(0, 400));
 
-    res.json({
-      success: true,
-      durableId,
-      fieldFound: true,
-      translationRecords: tData.records || [],
-      message: 'Field found. Use this durableId to set translation.'
-    });
+    let result;
+    if (tData.records && tData.records.length > 0) {
+      // Update existing translation
+      const tid = tData.records[0].Id;
+      console.log('Updating existing translation ID:', tid);
+      const uRes = await fetch(`${instanceUrl}/services/data/v59.0/tooling/sobjects/CustomFieldTranslation/${tid}`, {
+        method: 'PATCH',
+        headers,
+        body: JSON.stringify({ Label: hebrewLabel })
+      });
+      const uText = uRes.status === 204 ? 'updated' : await uRes.text();
+      console.log('Update result:', uRes.status, uText);
+      result = { success: uRes.status === 204 || uRes.status === 200, status: uRes.status, action: 'updated', body: uText };
+    } else {
+      // Create new translation
+      console.log('Creating new translation');
+      const cRes = await fetch(`${instanceUrl}/services/data/v59.0/tooling/sobjects/CustomFieldTranslation/`, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ FieldDefinitionId: fieldDurableId, Language: 'he', Label: hebrewLabel })
+      });
+      const cData = await cRes.json();
+      console.log('Create result:', cRes.status, JSON.stringify(cData));
+      result = { success: cRes.status === 201 || cData.success, status: cRes.status, action: 'created', body: cData };
+    }
 
+    res.json(result);
   } catch (e) {
     console.log('TRANSLATE TOOLING ERROR:', e.message);
-    res.status(500).json({ error: e.message });
+    res.status(500).json({ success: false, error: e.message });
   }
 });
 
-app.get('/health', (req, res) => res.json({ status: 'ok', version: '4.0' }));
+app.get('/health', (req, res) => res.json({ status: 'ok', version: '5.0' }));
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`SF Proxy v4 running on port ${PORT}`));
+app.listen(PORT, () => console.log(`SF Proxy v5 running on port ${PORT}`));
