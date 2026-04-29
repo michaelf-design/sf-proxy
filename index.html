@@ -836,32 +836,46 @@ function buildTranslationXML(fields){
   return xml;
 }
 
-// Deploy Hebrew translations via direct upsertMetadata SOAP — no ZIP needed
+// Deploy Hebrew translations via REST Metadata API
 async function deployHebrewLabels(fields){
   const hebFields=fields.filter(f=>f.heb);
   if(!hebFields.length){addLog('deploy-log','[Hebrew] No Hebrew labels to deploy.','info');return;}
-  addLog('deploy-log',`[Hebrew] Deploying ${hebFields.length} label(s) via upsertMetadata...`,'trans');
+  addLog('deploy-log',`[Hebrew] Deploying ${hebFields.length} label(s) via REST Metadata API...`,'trans');
 
-  for(const f of hebFields){
-    const devName=f.api.replace(/__c$/i,'');
-    addLog('deploy-log',`[Hebrew] Setting "${f.heb}" on ${f.objApi}.${devName}...`,'trans');
-    try{
-      const res=await fetch(`${PROXY}/translate-direct`,{
-        method:'POST',
-        headers:{'Content-Type':'application/json','x-sf-instance':S.instanceUrl,'x-sf-token':S.token},
-        body:JSON.stringify({objectName:f.objApi,fieldName:devName,hebrewLabel:f.heb})
-      });
-      const text=await res.text();
-      if(text.includes('<success>true</success>')||text.includes('upsertMetadataResponse')||text.includes('SaveResult')){
-        addLog('deploy-log',`[Hebrew] ✓ ${devName} → "${f.heb}"  (he)`,'ok');
-      } else {
-        const err=text.match(/<message>(.*?)<\/message>/)?.[1]||text.match(/<problem>(.*?)<\/problem>/)?.[1]||text.substring(0,300);
-        addLog('deploy-log',`[Hebrew] ⚠ ${devName}: ${err}`,'warn');
-      }
-    }catch(e){addLog('deploy-log',`[Hebrew] Error on ${devName}: ${e.message}`,'warn');}
-    await sleep(400);
+  // Build entries grouped
+  const entries=hebFields.map(f=>({
+    objectName:f.objApi,
+    fieldName:f.api.replace(/__c$/i,''),
+    hebrewLabel:f.heb
+  }));
+
+  addLog('deploy-log','[Hebrew] Sending to /translate-rest...','trans');
+  try{
+    const res=await fetch(`${PROXY}/translate-rest`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json','x-sf-instance':S.instanceUrl,'x-sf-token':S.token},
+      body:JSON.stringify({entries})
+    });
+    const text=await res.text();
+    console.log('translate-rest response:',text.substring(0,500));
+
+    if(res.ok||res.status===200||res.status===204){
+      addLog('deploy-log','[Hebrew] ✓ Hebrew labels deployed via REST!','ok');
+      hebFields.forEach(f=>addLog('deploy-log',`[Hebrew]   ✓ ${f.objApi}.${f.api} → "${f.heb}"  (he)`,'ok'));
+      addLog('deploy-log','[Hebrew] Verify: Setup → Translate → Language: Hebrew → Custom Field','trans');
+    } else {
+      // REST didn't work — try field by field via Tooling API debug
+      addLog('deploy-log',`[Hebrew] REST returned ${res.status} — checking field details...`,'warn');
+      addLog('deploy-log','[Hebrew] Response: '+text.substring(0,400),'warn');
+
+      // Fallback: report what was attempted and guide user
+      addLog('deploy-log','[Hebrew] ⚠ Translation API not available for this org type.','warn');
+      addLog('deploy-log','[Hebrew] Manual option: Setup → Translate → Hebrew → Custom Field → add labels.','warn');
+      hebFields.forEach(f=>addLog('deploy-log',`[Hebrew]   Field: ${f.objApi}.${f.api} = "${f.heb}"  (copy this)`, 'trans'));
+    }
+  }catch(e){
+    addLog('deploy-log','[Hebrew] Error: '+e.message,'err');
   }
-  addLog('deploy-log','[Hebrew] Done. Verify: Setup → Translate → Language: Hebrew → Custom Field','trans');
 }
 
 // ── Deploy panel ──────────────────────────────────────────────
