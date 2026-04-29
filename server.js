@@ -93,6 +93,25 @@ app.post('/metadata-deploy', async (req, res) => {
   }
 });
 
+app.post('/metadata-deploy', async (req, res) => {
+  try {
+    const instanceUrl = req.headers['x-sf-instance'];
+    const token = req.headers['x-sf-token'];
+    const response = await fetch(`${instanceUrl}/services/Soap/m/59.0`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'text/xml',
+        'SOAPAction': 'deploy'
+      },
+      body: req.body
+    });
+    const text = await response.text();
+    res.status(response.status).send(text);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
 app.get('/health', (req, res) => res.json({ status: 'ok', version: '2.0' }));
 
 const PORT = process.env.PORT || 3000;
