@@ -5,7 +5,7 @@ const fetch = require('node-fetch');
 const app = express();
 app.use(cors({ origin: '*' }));
 app.use(express.json());
-app.use(express.text({ type: 'text/xml' }));
+app.use(express.text({ type: '*/*', limit: '50mb' }));
 
 // OAuth Username-Password Flow
 app.post('/soap-login', async (req, res) => {
@@ -53,62 +53,23 @@ app.post('/api', async (req, res) => {
   }
 });
 
-// Translation SOAP API proxy
-app.post('/translate', async (req, res) => {
-  try {
-    const instanceUrl = req.headers['x-sf-instance'];
-    const token = req.headers['x-sf-token'];
-    const response = await fetch(`${instanceUrl}/services/Soap/m/59.0`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'text/xml',
-        'SOAPAction': 'retrieve'
-      },
-      body: req.body
-    });
-    const text = await response.text();
-    res.status(response.status).send(text);
-  } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
-});
-
-// Deploy metadata (ZIP) via Metadata API SOAP
+// Metadata API SOAP proxy (deploy + checkDeployStatus)
 app.post('/metadata-deploy', async (req, res) => {
   try {
     const instanceUrl = req.headers['x-sf-instance'];
-    const token = req.headers['x-sf-token'];
+    const body = typeof req.body === 'string' ? req.body : JSON.stringify(req.body);
     const response = await fetch(`${instanceUrl}/services/Soap/m/59.0`, {
       method: 'POST',
       headers: {
-        'Content-Type': 'text/xml',
-        'SOAPAction': 'deploy'
+        'Content-Type': 'text/xml; charset=UTF-8',
+        'SOAPAction': '""'
       },
-      body: req.body
+      body: body
     });
     const text = await response.text();
-    res.status(response.status).send(text);
+    res.status(response.status).set('Content-Type', 'text/xml').send(text);
   } catch (e) {
-    res.status(500).json({ error: e.message });
-  }
-});
-
-app.post('/metadata-deploy', async (req, res) => {
-  try {
-    const instanceUrl = req.headers['x-sf-instance'];
-    const token = req.headers['x-sf-token'];
-    const response = await fetch(`${instanceUrl}/services/Soap/m/59.0`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'text/xml',
-        'SOAPAction': 'deploy'
-      },
-      body: req.body
-    });
-    const text = await response.text();
-    res.status(response.status).send(text);
-  } catch (e) {
-    res.status(500).json({ error: e.message });
+    res.status(500).send(`<error>${e.message}</error>`);
   }
 });
 
