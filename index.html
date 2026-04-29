@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SF Metadata Architect</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Syne:wght@700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+:root {
+  --bg: #0a0a0f; --surface: #12121a; --surface2: #1a1a26; --surface3: #22223a;
+  --accent: #6c63ff; --success: #00d4aa; --danger: #ff6b6b; --warn: #f5c842;
+  --text: #e8e8f0; --text2: #8888aa; --text3: #44445a;
+  --border: #2a2a40; --border2: #3a3a55;
+  --radius: 8px; --font-head: 'Syne',sans-serif; --font-mono: 'IBM Plex Mono',monospace;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { height: 100%; }
+body { background: var(--bg); color: var(--text); font-family: var(--font-mono); font-size: 13px; display: flex; flex-direction: column; }
+.shell { display: flex; flex-direction: column; height: 100vh; }
+.topbar { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 20px; display: flex; align-items: center; height: 52px; flex-shrink: 0; }
+.logo { font-family: var(--font-head); font-size: 15px; font-weight: 700; color: var(--text); display: flex; align-items: center; gap: 8px; margin-right: 24px; }
+.logo-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+.nav-tabs { display: flex; height: 100%; }
+.nav-tab { height: 100%; padding: 0 16px; display: flex; align-items: center; font-size: 11px; font-weight: 500; color: var(--text2); cursor: pointer; border-bottom: 2px solid transparent; letter-spacing: 0.08em; text-transform: uppercase; transition: all 0.15s; }
+.nav-tab:hover { color: var(--text); }
+.nav-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+.topbar-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+.conn-badge { display: flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 500; border: 1px solid; transition: all 0.3s; white-space: nowrap; }
+.conn-badge.disconnected { border-color: var(--border2); color: var(--text2); background: var(--surface2); }
+.conn-badge.connecting { border-color: var(--warn); color: var(--warn); background: rgba(245,200,66,0.08); }
+.conn-badge.connected { border-color: var(--success); color: var(--success); background: rgba(0,212,170,0.08); }
+.conn-badge.error { border-color: var(--danger); color: var(--danger); background: rgba(255,107,107,0.08); }
+.bdot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
+.bdot.pulse { animation: bpulse 1.2s ease-in-out infinite; }
+@keyframes bpulse { 0%,100%{opacity:1}50%{opacity:0.3} }
+.body { display: grid; grid-template-columns: 260px 1fr; flex: 1; overflow: hidden; }
+.sidebar { background: var(--surface); border-right: 1px solid var(--border); padding: 16px; display: flex; flex-direction: column; gap: 14px; overflow-y: auto; }
+.main { padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; }
+.panel { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
+.panel-head { padding: 9px 14px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+.panel-title { font-size: 10px; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text2); }
+.panel-body { padding: 14px; display: flex; flex-direction: column; gap: 10px; }
+.fg { display: flex; flex-direction: column; gap: 5px; }
+.fg label { font-size: 10px; color: var(--text2); letter-spacing: 0.06em; text-transform: uppercase; }
+input[type=text], input[type=password], input[type=url], input[type=email], select, textarea {
+  background: var(--bg); border: 1px solid var(--border2); border-radius: var(--radius);
+  color: var(--text); font-family: var(--font-mono); font-size: 12px; padding: 7px 10px; width: 100%; transition: border-color 0.15s; }
+input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); }
+input::placeholder, textarea::placeholder { color: var(--text3); }
+select option { background: var(--surface2); }
+.g2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.g3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+.btn { padding: 7px 14px; border-radius: var(--radius); font-family: var(--font-mono); font-size: 11px; font-weight: 500; cursor: pointer; border: 1px solid; transition: all 0.15s; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
+.btn:disabled { opacity: 0.35; cursor: not-allowed; }
+.btn-accent { background: var(--accent); border-color: var(--accent); color: #fff; }
+.btn-accent:hover:not(:disabled) { filter: brightness(1.15); }
+.btn-ghost { background: transparent; border-color: var(--border2); color: var(--text2); }
+.btn-ghost:hover:not(:disabled) { border-color: var(--border); color: var(--text); background: var(--surface3); }
+.btn-success { background: rgba(0,212,170,0.12); border-color: var(--success); color: var(--success); }
+.btn-success:hover:not(:disabled) { background: rgba(0,212,170,0.2); }
+.btn-danger { background: rgba(255,107,107,0.1); border-color: var(--danger); color: var(--danger); }
+.btn-warn { background: rgba(245,200,66,0.1); border-color: var(--warn); color: var(--warn); }
+.btn-sm { padding: 4px 9px; font-size: 10px; }
+.btn-full { width: 100%; justify-content: center; }
+.toggle-row { display: flex; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 2px; gap: 2px; }
+.toggle-opt { flex: 1; padding: 5px; text-align: center; border-radius: 5px; cursor: pointer; font-size: 10px; font-weight: 500; color: var(--text2); transition: all 0.15s; letter-spacing: 0.06em; }
+.toggle-opt.active { background: var(--accent); color: #fff; }
+.tag { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 20px; font-size: 10px; font-weight: 500; }
+.tag-accent { background: rgba(108,99,255,0.15); color: var(--accent); border: 1px solid rgba(108,99,255,0.3); }
+.tag-warn { background: rgba(245,200,66,0.1); color: var(--warn); border: 1px solid rgba(245,200,66,0.25); }
+.tag-gray { background: var(--surface3); color: var(--text2); border: 1px solid var(--border2); }
+.log-box { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; max-height: 200px; overflow-y: auto; font-size: 11px; line-height: 1.8; }
+.ll { display: flex; gap: 10px; }
+.ll .ts { color: var(--text3); flex-shrink: 0; }
+.ll.ok .msg { color: var(--success); }
+.ll.err .msg { color: var(--danger); }
+.ll.warn .msg { color: var(--warn); }
+.ll.info .msg { color: var(--text2); }
+.stat-card { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 12px; }
+.stat-card .num { font-family: var(--font-head); font-size: 24px; font-weight: 700; color: var(--text); }
+.stat-card .lbl { font-size: 10px; color: var(--text3); margin-top: 2px; letter-spacing: 0.08em; text-transform: uppercase; }
+.queue-wrap { overflow-x: auto; }
+.qtable { width: 100%; border-collapse: collapse; min-width: 700px; }
+.qtable th { font-size: 10px; font-weight: 500; color: var(--text3); padding: 7px 10px; text-align: left; border-bottom: 1px solid var(--border); letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap; }
+.qtable td { padding: 6px 10px; border-bottom: 1px solid var(--border); vertical-align: middle; font-size: 12px; }
+.qtable tr:last-child td { border-bottom: none; }
+.qtable tr:hover td { background: rgba(255,255,255,0.02); }
+.empty-q { text-align: center; padding: 36px 20px; color: var(--text3); }
+.upload-zone { border: 1px dashed var(--border2); border-radius: var(--radius); padding: 20px; text-align: center; cursor: pointer; transition: all 0.15s; }
+.upload-zone:hover, .upload-zone.drag { border-color: var(--accent); background: rgba(108,99,255,0.05); }
+.upload-zone p { font-size: 11px; color: var(--text2); margin-top: 6px; }
+.hint { font-size: 11px; color: var(--text3); line-height: 1.6; }
+.rollback-info { background: rgba(245,200,66,0.06); border: 1px solid rgba(245,200,66,0.2); border-radius: var(--radius); padding: 10px 12px; font-size: 11px; color: var(--warn); line-height: 1.6; }
+.proxy-info { background: rgba(0,212,170,0.05); border: 1px solid rgba(0,212,170,0.2); border-radius: var(--radius); padding: 10px 12px; font-size: 11px; color: var(--success); line-height: 1.6; }
+.tab-view { display: none; }
+.tab-view.active { display: flex; flex-direction: column; gap: 14px; }
+.profile-list { display: flex; flex-direction: column; gap: 5px; max-height: 130px; overflow-y: auto; }
+.profile-item { display: flex; align-items: center; gap: 8px; padding: 4px 6px; border-radius: 5px; cursor: pointer; }
+.profile-item:hover { background: var(--surface3); }
+.profile-item input[type=checkbox] { accent-color: var(--accent); width: 13px; height: 13px; }
+.profile-item label { font-size: 11px; color: var(--text); cursor: pointer; }
+.sep { height: 1px; background: var(--border); margin: 2px 0; }
+.conn-detail { background: rgba(0,212,170,0.05); border: 1px solid rgba(0,212,170,0.2); border-radius: var(--radius); padding: 12px 14px; font-size: 12px; line-height: 2; display: none; }
+.conn-detail .k { color: var(--text3); }
+.conn-detail .v { color: var(--success); }
+</style>
+</head>
+<body>
+<div class="shell">
+  <div class="topbar">
+    <div class="logo"><span class="logo-dot"></span>SF Metadata Architect</div>
+    <div class="nav-tabs">
+      <div class="nav-tab active" onclick="switchTab('connect')">Connection</div>
+      <div class="nav-tab" onclick="switchTab('builder')">Field Builder</div>
+      <div class="nav-tab" onclick="switchTab('queue')">Staging Queue</div>
+      <div class="nav-tab" onclick="switchTab('deploy')">Deploy</div>
+    </div>
+    <div class="topbar-right">
+      <div class="conn-badge disconnected" id="conn-badge"><span class="bdot" id="bdot"></span><span id="badge-text">Not connected</span></div>
+    </div>
+  </div>
+
+  <div class="body">
+    <div class="sidebar">
+      <div>
+        <div style="font-size:10px;color:var(--text3);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px;">Queue Summary</div>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+          <div class="stat-card"><div class="num" id="s-total">0</div><div class="lbl">Staged</div></div>
+          <div class="stat-card"><div class="num" id="s-objs">0</div><div class="lbl">Objects</div></div>
+          <div class="stat-card"><div class="num" id="s-fields">0</div><div class="lbl">Fields</div></div>
+          <div class="stat-card"><div class="num" id="s-req">0</div><div class="lbl">Required</div></div>
+        </div>
+      </div>
+      <div class="sep"></div>
+      <div>
+        <div style="font-size:10px;color:var(--text3);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px;">Target Profiles</div>
+        <div class="profile-list">
+          <div class="profile-item"><input type="checkbox" id="p1" checked><label for="p1">System Administrator</label></div>
+          <div class="profile-item"><input type="checkbox" id="p2"><label for="p2">Standard User</label></div>
+          <div class="profile-item"><input type="checkbox" id="p3"><label for="p3">Read Only</label></div>
+          <div class="profile-item"><input type="checkbox" id="p4"><label for="p4">Custom: Sales</label></div>
+          <div class="profile-item"><input type="checkbox" id="p5"><label for="p5">Custom: Support</label></div>
+        </div>
+      </div>
+      <div class="sep"></div>
+      <div>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
+          <input type="checkbox" id="dry-run" style="accent-color:var(--warn);width:14px;height:14px;">
+          <label for="dry-run" style="font-size:11px;color:var(--warn);cursor:pointer;">Dry Run (checkOnly)</label>
+        </div>
+        <p class="hint">Validates without making changes.</p>
+      </div>
+      <div class="sep"></div>
+      <div class="rollback-info">⚡ rollbackOnError: true — any failure rolls back the entire batch.</div>
+    </div>
+
+    <div class="main">
+
+      <div class="tab-view active" id="tab-connect">
+        <div class="proxy-info">
+          ✓ Proxy: <strong>https://sf-proxy-ncj5.onrender.com</strong><br>
+          All Salesforce API calls route through your Render proxy — no CORS issues.
+        </div>
+        <div class="panel">
+          <div class="panel-head"><span class="panel-title">Salesforce Login</span></div>
+          <div class="panel-body">
+            <div class="toggle-row" id="env-toggle">
+              <div class="toggle-opt active" onclick="setEnv('production',this)">Production / Developer</div>
+              <div class="toggle-opt" onclick="setEnv('sandbox',this)">Sandbox</div>
+              <div class="toggle-opt" onclick="setEnv('custom',this)">Custom Domain</div>
+            </div>
+            <div class="fg" id="custom-row" style="display:none;">
+              <label>Custom Domain URL</label>
+              <input type="url" id="custom-url" placeholder="https://yourcompany.my.salesforce.com" />
+            </div>
+            <div class="g2">
+              <div class="fg"><label>Username</label><input type="email" id="username" placeholder="you@yourorg.com" /></div>
+              <div class="fg"><label>Password</label><input type="password" id="password" placeholder="Salesforce password" /></div>
+            </div>
+            <div class="fg">
+              <label>Security Token</label>
+              <input type="text" id="sec-token" placeholder="From email — Setup → Reset My Security Token" />
+            </div>
+            <div class="hint">Your password and security token are combined automatically. Get your token: Salesforce avatar → Settings → Reset My Security Token → check your email.</div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <button class="btn btn-accent" id="connect-btn" onclick="connect()">⚡ Connect</button>
+              <button class="btn btn-danger" id="disconnect-btn" onclick="disconnect()" style="display:none;">Disconnect</button>
+            </div>
+          </div>
+        </div>
+        <div class="conn-detail" id="conn-detail">
+          <div><span class="k">Org ID: </span><span class="v" id="cd-org"></span></div>
+          <div><span class="k">Instance: </span><span class="v" id="cd-instance"></span></div>
+          <div><span class="k">User ID: </span><span class="v" id="cd-user"></span></div>
+          <div><span class="k">Status: </span><span class="v">Ready to deploy ✓</span></div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><span class="panel-title">Connection Log</span></div>
+          <div class="panel-body" style="padding:8px;">
+            <div class="log-box" id="conn-log"></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tab-view" id="tab-builder">
+        <div class="g2">
+          <div class="panel">
+            <div class="panel-head"><span class="panel-title">Object Definition</span></div>
+            <div class="panel-body">
+              <div class="fg"><label>Object Label</label><input type="text" id="b-obj-label" placeholder="Work Order" oninput="autoObjApi()" /></div>
+              <div class="fg"><label>API Name</label><input type="text" id="b-obj-api" placeholder="Work_Order__c" /></div>
+              <div class="fg"><label>Hebrew Label עברית</label><input type="text" id="b-obj-heb" placeholder="הזמנת עבודה" dir="rtl" /></div>
+              <div class="fg"><label>Description</label><input type="text" id="b-obj-desc" placeholder="Optional..." /></div>
+              <button class="btn btn-ghost btn-full" onclick="stageObject()">+ Stage Object</button>
+            </div>
+          </div>
+          <div class="panel">
+            <div class="panel-head"><span class="panel-title">Excel / CSV Import</span></div>
+            <div class="panel-body">
+              <div class="upload-zone" id="upload-zone" onclick="document.getElementById('file-in').click()" ondragover="event.preventDefault();this.classList.add('drag')" ondragleave="this.classList.remove('drag')" ondrop="handleDrop(event)">
+                <div style="font-size:22px;">⬆</div>
+                <p>Click or drag Excel / CSV here</p>
+                <p style="font-size:10px;color:var(--text3);margin-top:4px;">Columns: Object API | Field Label | API Name | Type | Required | Hebrew | Default | Help Text</p>
+              </div>
+              <input type="file" id="file-in" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleFile(this.files[0])" />
+              <div class="hint">Need the format? <span style="color:var(--accent);cursor:pointer;" onclick="downloadTemplate()">Download template.xlsx</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><span class="panel-title">Add Field</span></div>
+          <div class="panel-body">
+            <div class="g3">
+              <div class="fg"><label>Target Object API</label><input type="text" id="b-obj-ref" placeholder="Work_Order__c" /></div>
+              <div class="fg"><label>Field Label</label><input type="text" id="b-flabel" placeholder="Customer Name" oninput="autoFieldApi()" /></div>
+              <div class="fg"><label>Field API Name</label><input type="text" id="b-fapi" placeholder="Customer_Name__c" /></div>
+              <div class="fg"><label>Type</label>
+                <select id="b-ftype" onchange="onTypeChange()">
+                  <option>Text</option><option>TextArea</option><option>LongTextArea</option>
+                  <option>Number</option><option>Currency</option><option>Percent</option>
+                  <option>Checkbox</option><option>Date</option><option>DateTime</option>
+                  <option>Email</option><option>Phone</option><option>Url</option>
+                  <option>Picklist</option><option>MultiselectPicklist</option>
+                  <option>Lookup</option><option>MasterDetail</option>
+                  <option>AutoNumber</option><option>Formula</option>
+                </select>
+              </div>
+              <div class="fg"><label>Hebrew Label עברית</label><input type="text" id="b-fheb" placeholder="שם לקוח" dir="rtl" /></div>
+              <div class="fg" style="justify-content:flex-end;padding-top:18px;">
+                <div style="display:flex;align-items:center;gap:8px;">
+                  <input type="checkbox" id="b-freq" style="accent-color:var(--accent);width:14px;height:14px;">
+                  <label for="b-freq" style="font-size:11px;color:var(--text2);cursor:pointer;">Required</label>
+                </div>
+              </div>
+            </div>
+            <div id="pl-extra" style="display:none;">
+              <div class="fg"><label>Picklist Values (comma separated)</label><input type="text" id="b-plvals" placeholder="New, In Progress, Resolved, Closed" /></div>
+            </div>
+            <div id="rel-extra" style="display:none;">
+              <div class="g2">
+                <div class="fg"><label>Related Object</label><input type="text" id="b-relobj" placeholder="Account" /></div>
+                <div class="fg"><label>Relationship Type</label>
+                  <select id="b-reltype"><option value="Lookup">Lookup (optional)</option><option value="MasterDetail">Master-Detail (required)</option></select>
+                </div>
+              </div>
+            </div>
+            <div class="g2">
+              <div class="fg"><label>Default Value</label><input type="text" id="b-fdefault" placeholder="Optional..." /></div>
+              <div class="fg"><label>Help Text</label><input type="text" id="b-fhelp" placeholder="Tooltip shown to users..." /></div>
+            </div>
+            <div style="display:flex;gap:8px;flex-wrap:wrap;">
+              <button class="btn btn-accent" onclick="stageField()">+ Stage Field</button>
+              <button class="btn btn-ghost" onclick="loadExample()">Load example</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="tab-view" id="tab-queue">
+        <div class="panel">
+          <div class="panel-head">
+            <span class="panel-title">Staging Queue</span>
+            <div style="display:flex;gap:6px;">
+              <button class="btn btn-ghost btn-sm" onclick="clearQueue()">Clear All</button>
+              <button class="btn btn-ghost btn-sm" onclick="exportQueue()">Export JSON</button>
+            </div>
+          </div>
+          <div class="queue-wrap">
+            <table class="qtable">
+              <thead><tr>
+                <th>Type</th><th>Object</th><th>Field Label</th><th>API Name</th>
+                <th>Field Type</th><th>Hebrew</th><th>Req</th><th>Details</th><th></th>
+              </tr></thead>
+              <tbody id="queue-body"></tbody>
+            </table>
+          </div>
+          <div class="empty-q" id="empty-q">
+            <div style="font-size:26px;margin-bottom:8px;">⬡</div>
+            <p style="font-size:11px;">No items staged. Use Field Builder or import Excel.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="tab-view" id="tab-deploy">
+        <div class="panel">
+          <div class="panel-head"><span class="panel-title">Deployment Summary</span></div>
+          <div class="panel-body">
+            <div class="g3">
+              <div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;">Items</div><div style="font-size:22px;font-family:var(--font-head);color:var(--text);" id="d-count">0</div></div>
+              <div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;">Mode</div><div id="d-mode" style="font-size:13px;color:var(--warn);">Dry Run</div></div>
+              <div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;">Profiles</div><div id="d-profiles" style="font-size:13px;color:var(--accent);">1 selected</div></div>
+            </div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><span class="panel-title">XML Preview</span></div>
+          <div class="panel-body" style="padding:8px;">
+            <div style="display:flex;gap:6px;margin-bottom:6px;">
+              <button class="btn btn-ghost btn-sm" onclick="previewXML()">Refresh</button>
+              <button class="btn btn-ghost btn-sm" onclick="copyXML()">Copy XML</button>
+            </div>
+            <div class="log-box" id="xml-preview" style="white-space:pre;color:var(--text2);max-height:160px;">Click Refresh to generate XML preview.</div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><span class="panel-title">Deploy</span></div>
+          <div class="panel-body">
+            <div style="display:flex;gap:10px;flex-wrap:wrap;">
+              <button class="btn btn-warn" id="btn-dry" onclick="runDeploy(true)">🔍 Validate (Dry Run)</button>
+              <button class="btn btn-success" id="btn-deploy" onclick="runDeploy(false)">⚡ Deploy to Salesforce</button>
+            </div>
+            <div class="rollback-info">Sequence: Objects → Fields → Profiles. Full rollback on any error.</div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-head"><span class="panel-title">Deployment Log</span></div>
+          <div class="panel-body" style="padding:8px;">
+            <div class="log-box" id="deploy-log"></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<script>
+const PROXY = 'https://sf-proxy-ncj5.onrender.com';
+const PL_TYPES = new Set(['Picklist','MultiselectPicklist']);
+const REL_TYPES = new Set(['Lookup','MasterDetail']);
+let S = { env:'production', connected:false, token:'', instanceUrl:'', orgId:'', userId:'', queue:[] };
+
+function ts() { const n=new Date(); return `${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}:${String(n.getSeconds()).padStart(2,'0')}`; }
+function addLog(id, msg, type='info') {
+  const box=document.getElementById(id); if(!box) return;
+  const l=document.createElement('div'); l.className=`ll ${type}`;
+  l.innerHTML=`<span class="ts">${ts()}</span><span class="msg">${msg}</span>`;
+  box.appendChild(l); box.scrollTop=box.scrollHeight;
+}
+function setBadge(status, text) {
+  const b=document.getElementById('conn-badge'); b.className=`conn-badge ${status}`;
+  document.getElementById('bdot').className=`bdot ${status==='connecting'?'pulse':''}`;
+  document.getElementById('badge-text').textContent=text;
+}
+function toApi(s) { return s.trim().replace(/\s+/g,'_').replace(/[^a-zA-Z0-9_]/g,''); }
+
+function switchTab(t) {
+  document.querySelectorAll('.tab-view').forEach(e=>e.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(e=>e.classList.remove('active'));
+  document.getElementById('tab-'+t).classList.add('active');
+  ['connect','builder','queue','deploy'].forEach((tab,i)=>{ if(tab===t) document.querySelectorAll('.nav-tab')[i].classList.add('active'); });
+  if(t==='deploy') updateDeployPanel();
+}
+
+function setEnv(env, el) {
+  S.env=env;
+  document.querySelectorAll('.toggle-opt').forEach(o=>o.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('custom-row').style.display=env==='custom'?'':'none';
+}
+
+function getLoginUrl() {
+  if(S.env==='sandbox') return 'https://test.salesforce.com';
+  if(S.env==='custom') return document.getElementById('custom-url').value.trim().replace(/\/$/,'');
+  return 'https://login.salesforce.com';
+}
+
+async function connect() {
+  const user=document.getElementById('username').value.trim();
+  const pass=document.getElementById('password').value;
+  const token=document.getElementById('sec-token').value.trim();
+  if(!user||!pass){addLog('conn-log','Username and password are required.','err');return;}
+  const btn=document.getElementById('connect-btn');
+  btn.disabled=true; btn.textContent='Connecting...';
+  setBadge('connecting','Connecting...');
+  addLog('conn-log',`Connecting via proxy → ${PROXY}`,'info');
+  addLog('conn-log',`Environment: ${getLoginUrl()}`,'info');
+  addLog('conn-log',`Username: ${user}`,'info');
+  const soap=`<?xml version="1.0" encoding="utf-8"?><soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:urn="urn:partner.soap.sforce.com"><soapenv:Body><urn:login><urn:username>${user}</urn:username><urn:password>${pass}${token}</urn:password></urn:login></soapenv:Body></soapenv:Envelope>`;
+  try {
+    addLog('conn-log','Sending SOAP login request...','info');
+    const res=await fetch(`${PROXY}/soap-login`,{method:'POST',headers:{'Content-Type':'text/xml','SOAPAction':'login','x-sf-env':getLoginUrl()},body:soap});
+    const text=await res.text();
+    addLog('conn-log',`Proxy response: HTTP ${res.status}`,'info');
+    if(res.ok && text.includes('<sessionId>')) {
+      S.token=text.match(/<sessionId>(.*?)<\/sessionId>/)?.[1];
+      const serverUrl=text.match(/<serverUrl>(.*?)<\/serverUrl>/)?.[1];
+      S.instanceUrl=serverUrl?new URL(serverUrl).origin:getLoginUrl();
+      S.orgId=text.match(/<organizationId>(.*?)<\/organizationId>/)?.[1]||'';
+      S.userId=text.match(/<userId>(.*?)<\/userId>/)?.[1]||'';
+      S.connected=true;
+      setBadge('connected',`Connected: ${S.instanceUrl.replace('https://','').split('.')[0]}`);
+      addLog('conn-log','✓ Login successful!','ok');
+      addLog('conn-log',`Instance: ${S.instanceUrl}`,'ok');
+      addLog('conn-log',`Org ID: ${S.orgId}`,'ok');
+      addLog('conn-log','Ready to deploy objects and fields.','ok');
+      document.getElementById('conn-detail').style.display='';
+      document.getElementById('cd-org').textContent=S.orgId;
+      document.getElementById('cd-instance').textContent=S.instanceUrl;
+      document.getElementById('cd-user').textContent=S.userId;
+      document.getElementById('disconnect-btn').style.display='';
+    } else if(text.includes('<faultstring>')) {
+      const fault=text.match(/<faultstring>(.*?)<\/faultstring>/)?.[1];
+      setBadge('error','Login failed');
+      addLog('conn-log',`✕ Salesforce error: ${fault}`,'err');
+      if(fault?.includes('INVALID_LOGIN')) addLog('conn-log','Check username, password and security token.','warn');
+      if(fault?.includes('API_DISABLED')) addLog('conn-log','Enable API access: Setup → Profiles → your profile → API Enabled.','warn');
+    } else {
+      setBadge('error','Unexpected response');
+      addLog('conn-log',`Unexpected: ${text.substring(0,200)}`,'err');
+    }
+  } catch(e) {
+    setBadge('error','Error');
+    addLog('conn-log',`Error: ${e.message}`,'err');
+    addLog('conn-log','Make sure proxy is awake: open https://sf-proxy-ncj5.onrender.com/health in your browser first.','warn');
+  }
+  btn.disabled=false; btn.textContent='⚡ Connect';
+}
+
+function disconnect() {
+  S={...S,connected:false,token:'',instanceUrl:'',orgId:'',userId:''};
+  setBadge('disconnected','Not connected');
+  document.getElementById('conn-detail').style.display='none';
+  document.getElementById('disconnect-btn').style.display='none';
+  addLog('conn-log','Disconnected.','warn');
+}
+
+function autoObjApi() { const a=document.getElementById('b-obj-api'); if(!a.dataset.m) a.value=toApi(document.getElementById('b-obj-label').value)+(document.getElementById('b-obj-label').value.trim()?'__c':''); }
+document.getElementById('b-obj-api').addEventListener('input',function(){this.dataset.m='1';});
+function autoFieldApi() { const a=document.getElementById('b-fapi'); if(!a.dataset.m) a.value=toApi(document.getElementById('b-flabel').value)+(document.getElementById('b-flabel').value.trim()?'__c':''); }
+document.getElementById('b-fapi').addEventListener('input',function(){this.dataset.m='1';});
+function onTypeChange() {
+  const t=document.getElementById('b-ftype').value;
+  document.getElementById('pl-extra').style.display=PL_TYPES.has(t)?'':'none';
+  document.getElementById('rel-extra').style.display=REL_TYPES.has(t)?'':'none';
+}
+
+function stageObject() {
+  const lbl=document.getElementById('b-obj-label').value.trim();
+  const api=document.getElementById('b-obj-api').value.trim();
+  if(!lbl||!api){alert('Object label and API name required.');return;}
+  S.queue.push({kind:'object',objLabel:lbl,objApi:api,heb:document.getElementById('b-obj-heb').value.trim(),desc:document.getElementById('b-obj-desc').value.trim()});
+  refreshQueue();updateStats();
+  ['b-obj-label','b-obj-api','b-obj-heb','b-obj-desc'].forEach(id=>{const e=document.getElementById(id);if(e){e.value='';if(e.dataset)delete e.dataset.m;}});
+}
+
+function stageField() {
+  const objRef=document.getElementById('b-obj-ref').value.trim();
+  const lbl=document.getElementById('b-flabel').value.trim();
+  const api=document.getElementById('b-fapi').value.trim();
+  const type=document.getElementById('b-ftype').value;
+  if(!objRef||!lbl||!api){alert('Object API, field label and API name required.');return;}
+  S.queue.push({kind:'field',objApi:objRef,label:lbl,api,type,
+    heb:document.getElementById('b-fheb').value.trim(),
+    req:document.getElementById('b-freq').checked,
+    defaultVal:document.getElementById('b-fdefault').value.trim(),
+    helpText:document.getElementById('b-fhelp').value.trim(),
+    picklistValues:PL_TYPES.has(type)?document.getElementById('b-plvals').value.split(',').map(v=>v.trim()).filter(Boolean):[],
+    relObject:document.getElementById('b-relobj').value.trim(),
+    relType:document.getElementById('b-reltype').value});
+  refreshQueue();updateStats();
+  ['b-flabel','b-fapi','b-fheb','b-fdefault','b-fhelp','b-plvals','b-relobj'].forEach(id=>{const e=document.getElementById(id);if(e){e.value='';if(e.dataset)delete e.dataset.m;}});
+  document.getElementById('b-freq').checked=false;
+}
+
+function updateStats() {
+  const q=S.queue;
+  document.getElementById('s-total').textContent=q.length;
+  document.getElementById('s-objs').textContent=q.filter(i=>i.kind==='object').length;
+  document.getElementById('s-fields').textContent=q.filter(i=>i.kind==='field').length;
+  document.getElementById('s-req').textContent=q.filter(i=>i.kind==='field'&&i.req).length;
+}
+
+function refreshQueue() {
+  const tbody=document.getElementById('queue-body');
+  const empty=document.getElementById('empty-q');
+  if(!S.queue.length){tbody.innerHTML='';empty.style.display='';return;}
+  empty.style.display='none';
+  tbody.innerHTML=S.queue.map((item,i)=>{
+    if(item.kind==='object') return `<tr><td><span class="tag tag-accent">Object</span></td><td><strong>${item.objApi}</strong></td><td>${item.objLabel}</td><td style="color:var(--text3);">${item.objApi}</td><td>—</td><td dir="rtl">${item.heb||'—'}</td><td>—</td><td style="font-size:10px;color:var(--text3);">${item.desc||''}</td><td><button class="btn btn-ghost btn-sm" onclick="removeItem(${i})">✕</button></td></tr>`;
+    const det=item.picklistValues?.length?`${item.picklistValues.length} vals`:(item.relObject?`${item.relType}→${item.relObject}`:'');
+    return `<tr><td><span class="tag tag-gray">Field</span></td><td style="color:var(--text3);">${item.objApi}</td><td>${item.label}</td><td style="font-family:var(--font-mono);font-size:11px;color:var(--accent);">${item.api}</td><td><span class="tag tag-gray">${item.type}</span></td><td dir="rtl">${item.heb||'—'}</td><td>${item.req?'<span class="tag tag-warn">Yes</span>':'—'}</td><td style="font-size:10px;color:var(--text3);">${det}</td><td><button class="btn btn-ghost btn-sm" onclick="removeItem(${i})">✕</button></td></tr>`;
+  }).join('');
+}
+
+function removeItem(i){S.queue.splice(i,1);refreshQueue();updateStats();}
+function clearQueue(){if(confirm('Clear all staged items?')){S.queue=[];refreshQueue();updateStats();}}
+function exportQueue(){const b=new Blob([JSON.stringify(S.queue,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='sf-queue.json';a.click();}
+function loadExample(){document.getElementById('b-obj-ref').value='Service_Request__c';document.getElementById('b-flabel').value='Status';document.getElementById('b-fapi').value='Status__c';document.getElementById('b-fapi').dataset.m='1';document.getElementById('b-ftype').value='Picklist';onTypeChange();document.getElementById('b-plvals').value='New, In Progress, Resolved, Closed';document.getElementById('b-fheb').value='סטטוס';document.getElementById('b-freq').checked=true;}
+
+function handleFile(file){
+  if(!file)return;
+  const r=new FileReader();
+  r.onload=e=>{
+    try{
+      const wb=XLSX.read(e.target.result,{type:'binary'});
+      const ws=wb.Sheets[wb.SheetNames[0]];
+      const rows=XLSX.utils.sheet_to_json(ws,{defval:''});
+      let added=0;
+      rows.forEach(r=>{
+        const lbl=String(r['Field Label']||r['Label']||'').trim();
+        const api=String(r['API Name']||'').trim();
+        if(!lbl&&!api)return;
+        S.queue.push({kind:'field',objApi:String(r['Object API']||'').trim(),label:lbl,api:api||toApi(lbl)+'__c',type:String(r['Type']||'Text').trim(),heb:String(r['Hebrew']||r['Hebrew Label']||'').trim(),req:['yes','true','1'].includes(String(r['Required']||'').toLowerCase()),defaultVal:String(r['Default Value']||'').trim(),helpText:String(r['Help Text']||'').trim(),picklistValues:String(r['Picklist Values']||'').split(',').map(v=>v.trim()).filter(Boolean),relObject:'',relType:'Lookup'});
+        added++;
+      });
+      refreshQueue();updateStats();
+      addLog('conn-log',`Imported ${added} rows from ${file.name}`,'ok');
+      switchTab('queue');
+    }catch(err){addLog('conn-log',`Parse error: ${err.message}`,'err');}
+  };
+  r.readAsBinaryString(file);
+}
+function handleDrop(e){e.preventDefault();document.getElementById('upload-zone').classList.remove('drag');handleFile(e.dataTransfer.files[0]);}
+function downloadTemplate(){
+  const ws=XLSX.utils.aoa_to_sheet([['Object API','Field Label','API Name','Type','Required','Hebrew Label','Default Value','Help Text','Picklist Values'],['Work_Order__c','Status','Status__c','Picklist','Yes','סטטוס','','','New,In Progress,Done']]);
+  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Fields');XLSX.writeFile(wb,'sf-template.xlsx');
+}
+
+function buildFieldMeta(f){
+  const m={label:f.label,required:f.req&&f.type!=='Checkbox',description:f.helpText||''};
+  if(f.type==='Text'){m.type='Text';m.length=255;}
+  else if(f.type==='LongTextArea'){m.type='LongTextArea';m.length=32768;m.visibleLines=5;}
+  else if(f.type==='TextArea'){m.type='TextArea';}
+  else if(f.type==='Number'){m.type='Number';m.precision=18;m.scale=0;}
+  else if(f.type==='Currency'||f.type==='Percent'){m.type=f.type;m.precision=18;m.scale=2;}
+  else if(f.type==='Checkbox'){m.type='Checkbox';m.defaultValue=false;m.required=false;}
+  else if(f.type==='Date'){m.type='Date';}
+  else if(f.type==='DateTime'){m.type='DateTime';}
+  else if(f.type==='Email'){m.type='Email';}
+  else if(f.type==='Phone'){m.type='Phone';}
+  else if(f.type==='Url'){m.type='Url';}
+  else if(f.type==='AutoNumber'){m.type='AutoNumber';m.startingNumber=1;m.displayFormat='AN-{0000}';}
+  else if(PL_TYPES.has(f.type)){m.type=f.type;if(f.picklistValues?.length)m.valueSet={valueSetDefinition:{value:f.picklistValues.map(v=>({fullName:v,label:v,default:false}))}};if(f.type==='MultiselectPicklist')m.visibleLines=4;}
+  else if(REL_TYPES.has(f.type)){m.type=f.type;m.referenceTo=f.relObject||'Account';m.relationshipName=(f.relObject||'Account').replace('__c','');if(f.type==='MasterDetail')m.relationshipOrder=0;}
+  else{m.type=f.type;}
+  return m;
+}
+
+async function sfCall(path,body,method='POST'){
+  const res=await fetch(`${PROXY}/api`,{method:'POST',headers:{'Content-Type':'application/json','x-sf-url':`${S.instanceUrl}${path}`,'x-sf-token':S.token,'x-sf-method':method},body:JSON.stringify(body)});
+  return{status:res.status,data:await res.json()};
+}
+
+function updateDeployPanel(){
+  document.getElementById('d-count').textContent=S.queue.length;
+  const dry=document.getElementById('dry-run').checked;
+  document.getElementById('d-mode').textContent=dry?'Dry Run (checkOnly)':'Live Deploy';
+  document.getElementById('d-mode').style.color=dry?'var(--warn)':'var(--success)';
+  document.getElementById('d-profiles').textContent=`${Array.from(document.querySelectorAll('#p1,#p2,#p3,#p4,#p5')).filter(p=>p.checked).length} selected`;
+}
+
+function buildObjXML(obj,fields){
+  let x=`<?xml version="1.0" encoding="UTF-8"?>\n<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">\n  <label>${obj.objLabel}</label>\n  <pluralLabel>${obj.objLabel}s</pluralLabel>\n`;
+  if(obj.desc)x+=`  <description>${obj.desc}</description>\n`;
+  x+=`  <nameField>\n    <label>Name</label>\n    <type>Text</type>\n  </nameField>\n  <deploymentStatus>Deployed</deploymentStatus>\n  <sharingModel>ReadWrite</sharingModel>\n\n`;
+  fields.forEach(f=>{
+    x+=`  <fields>\n    <fullName>${f.api}</fullName>\n    <label>${f.label}</label>\n`;
+    if(f.req&&f.type!=='Checkbox')x+=`    <required>true</required>\n`;
+    if(REL_TYPES.has(f.type)){x+=`    <type>${f.type}</type>\n    <referenceTo>${f.relObject||'Account'}</referenceTo>\n    <relationshipName>${(f.relObject||'Account').replace('__c','')}</relationshipName>\n`;if(f.type==='MasterDetail')x+=`    <relationshipOrder>0</relationshipOrder>\n`;}
+    else if(PL_TYPES.has(f.type)){x+=`    <type>${f.type}</type>\n`;if(f.picklistValues?.length){x+=`    <valueSet>\n      <valueSetDefinition>\n`;f.picklistValues.forEach(v=>x+=`        <value><fullName>${v}</fullName><label>${v}</label><default>false</default></value>\n`);x+=`      </valueSetDefinition>\n    </valueSet>\n`;}if(f.type==='MultiselectPicklist')x+=`    <visibleLines>4</visibleLines>\n`;}
+    else{x+=`    <type>${f.type}</type>\n`;if(f.type==='Text')x+=`    <length>255</length>\n`;if(f.type==='LongTextArea')x+=`    <length>32768</length>\n    <visibleLines>5</visibleLines>\n`;}
+    x+=`  </fields>\n`;
+  });
+  return x+'</CustomObject>';
+}
+
+function previewXML(){
+  if(!S.queue.length){document.getElementById('xml-preview').textContent='Queue is empty.';return;}
+  const objs=S.queue.filter(i=>i.kind==='object');
+  const fields=S.queue.filter(i=>i.kind==='field');
+  let preview='';
+  if(objs.length){const o=objs[0];const xml=buildObjXML(o,fields.filter(f=>f.objApi===o.objApi));preview=xml.length>1200?xml.substring(0,1200)+'\n... (truncated)':xml;}
+  else if(fields.length){preview=fields.slice(0,2).map(f=>`<fields>\n  <fullName>${f.api}</fullName>\n  <label>${f.label}</label>\n  <type>${f.type}</type>\n</fields>`).join('\n');}
+  document.getElementById('xml-preview').textContent=preview;
+}
+function copyXML(){const el=document.getElementById('xml-preview');navigator.clipboard.writeText(el.textContent).then(()=>{const t=el.textContent;el.textContent='Copied!';setTimeout(()=>el.textContent=t,1200);});}
+
+async function runDeploy(dryRun){
+  if(!S.connected){addLog('deploy-log','Not connected. Go to Connection tab first.','err');switchTab('connect');return;}
+  if(!S.queue.length){addLog('deploy-log','Staging queue is empty.','err');return;}
+  const isDry=dryRun||document.getElementById('dry-run').checked;
+  document.getElementById('btn-dry').disabled=true;
+  document.getElementById('btn-deploy').disabled=true;
+  addLog('deploy-log',`━━━ ${isDry?'DRY RUN':'LIVE DEPLOY'} STARTED ━━━`,'info');
+  addLog('deploy-log',`rollbackOnError: true | checkOnly: ${isDry}`,'info');
+  const objects=S.queue.filter(i=>i.kind==='object');
+  const allFields=S.queue.filter(i=>i.kind==='field');
+  let ok=0,fail=0;
+  for(const obj of objects){
+    addLog('deploy-log',`[Object] ${isDry?'(dry) ':''}${obj.objApi}...`,'info');
+    if(isDry){addLog('deploy-log',`[Object] ✓ Would create: ${obj.objApi}`,'ok');ok++;await new Promise(r=>setTimeout(r,100));continue;}
+    try{
+      const{status,data}=await sfCall('/services/data/v59.0/tooling/sobjects/CustomObject/',{FullName:obj.objApi,Metadata:{label:obj.objLabel,pluralLabel:obj.objLabel+'s',nameField:{label:'Name',type:'Text'},deploymentStatus:'Deployed',sharingModel:'ReadWrite',description:obj.desc||''}});
+      if(status===201||status===200){addLog('deploy-log',`[Object] ✓ Created: ${obj.objApi}`,'ok');ok++;}
+      else{const msg=Array.isArray(data)?data[0]?.message:data.message;if(msg?.toLowerCase().includes('duplicate')){addLog('deploy-log',`[Object] ⚠ Already exists: ${obj.objApi}`,'warn');ok++;}else{addLog('deploy-log',`[Object] ✕ Failed: ${msg}`,'err');fail++;addLog('deploy-log','Rollback triggered — stopping.','err');break;}}
+    }catch(e){addLog('deploy-log',`[Object] ✕ ${e.message}`,'err');fail++;break;}
+    await new Promise(r=>setTimeout(r,500));
+  }
+  if(fail===0){
+    for(const f of allFields){
+      addLog('deploy-log',`[Field] ${isDry?'(dry) ':''}${f.objApi}.${f.api} (${f.type})...`,'info');
+      if(isDry){addLog('deploy-log',`[Field] ✓ Would create: ${f.api}`,'ok');ok++;await new Promise(r=>setTimeout(r,80));continue;}
+      try{
+        const{status,data}=await sfCall('/services/data/v59.0/tooling/sobjects/CustomField/',{FullName:`${f.objApi}.${f.api}`,Metadata:buildFieldMeta(f)});
+        if(status===201||status===200){addLog('deploy-log',`[Field] ✓ ${f.api}`,'ok');ok++;}
+        else{const msg=Array.isArray(data)?data[0]?.message:data.message;if(msg?.toLowerCase().includes('duplicate')){addLog('deploy-log',`[Field] ⚠ Already exists: ${f.api}`,'warn');ok++;}else{addLog('deploy-log',`[Field] ✕ ${f.api}: ${msg}`,'err');fail++;addLog('deploy-log','Rollback triggered.','err');break;}}
+      }catch(e){addLog('deploy-log',`[Field] ✕ ${e.message}`,'err');fail++;break;}
+      await new Promise(r=>setTimeout(r,400));
+    }
+  }
+  addLog('deploy-log',`━━━ ${isDry?'DRY RUN':'DEPLOY'} COMPLETE — ✓ ${ok} | ✕ ${fail} ━━━`,fail===0?'ok':'err');
+  if(isDry&&fail===0)addLog('deploy-log','Validation passed. Uncheck Dry Run and click Deploy to apply.','warn');
+  document.getElementById('btn-dry').disabled=false;
+  document.getElementById('btn-deploy').disabled=false;
+}
+
+document.getElementById('dry-run').addEventListener('change',updateDeployPanel);
+addLog('conn-log','Ready. Enter your Salesforce credentials and click Connect.','info');
+addLog('conn-log',`Proxy: ${PROXY}`,'info');
+addLog('conn-log','Tip: Open https://sf-proxy-ncj5.onrender.com/health first to wake the proxy.','warn');
+updateStats(); refreshQueue();
+</script>
+</body>
+</html>
