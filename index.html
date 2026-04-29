@@ -940,18 +940,15 @@ function buildTranslationXML(fields) {
   xml += `</Translations>`;
   return xml;
 }
-async function buildTranslationZip(fields){
-  const zip=new JSZip();
-  const hebFields=fields.filter(f=>f.heb);
-  if(!hebFields.length)return null;
-  const transXML=buildTranslationXML(hebFields);
-  if(!transXML)return null;
-  const pkgXML=`<?xml version="1.0" encoding="UTF-8"?>\n<Package xmlns="http://soap.sforce.com/2006/04/metadata">\n  <types>\n    <members>he</members>\n    <name>Translations</name>\n  </types>\n  <version>59.0</version>\n</Package>`;
-  zip.file('translations/he.translation-meta.xml', transXML);
-  zip.file('package.xml',pkgXML);
-  return await zip.generateAsync({type:'base64'});
-}
-
+const objApis = [...new Set(fields.filter(f=>f.heb).map(f=>f.objApi))];
+const pkgXML = `<?xml version="1.0" encoding="UTF-8"?>
+<Package xmlns="http://soap.sforce.com/2006/04/metadata">
+  <types>
+    <members>he</members>
+    <name>Translations</name>
+  </types>
+  <version>59.0</version>
+</Package>`;
 async function deployTranslationZip(base64Zip,isDry){
   const xml=`<?xml version="1.0" encoding="UTF-8"?><soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:met="http://soap.sforce.com/2006/04/metadata"><soapenv:Header><met:SessionHeader><met:sessionId>${S.token}</met:sessionId></met:SessionHeader></soapenv:Header><soapenv:Body><met:deploy><met:ZipFile>${base64Zip}</met:ZipFile><met:DeployOptions><met:checkOnly>${isDry}</met:checkOnly><met:rollbackOnError>true</met:rollbackOnError><met:singlePackage>true</met:singlePackage><met:ignoreWarnings>true</met:ignoreWarnings></met:DeployOptions></met:deploy></soapenv:Body></soapenv:Envelope>`;
   const res=await fetch(`${PROXY}/metadata-deploy`,{method:'POST',headers:{'Content-Type':'text/xml','x-sf-instance':S.instanceUrl,'x-sf-token':S.token},body:xml});
