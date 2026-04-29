@@ -796,51 +796,43 @@ function buildFieldMeta(f){
   return m;
 }
 
-// ── CORRECT translation XML builder ──────────────────────────
-// Standard objects (Account, Contact...) → <customFields> with Object.FieldName format
-// Custom objects (My_Object__c) → <customObjects> wrapper with <customFields> inside
+// ── Translation XML builder ───────────────────────────────────
+// ALL objects (standard AND custom) use <customObjects> wrapper.
+// Field <name> must NEVER include __c — developer name only.
 function buildTranslationXML(fields){
-  // group fields by object
   const byObj={};
   fields.forEach(f=>{
     if(!f.heb)return;
-    if(!byObj[f.objApi])byObj[f.objApi]={isCustom:f.objApi.endsWith('__c'),objHeb:'',fields:[]};
+    if(!byObj[f.objApi])byObj[f.objApi]={objHeb:'',fields:[]};
     byObj[f.objApi].fields.push(f);
   });
-  // add object-level hebrew labels
   S.queue.filter(i=>i.kind==='objLabel'&&i.heb).forEach(o=>{
-    if(!byObj[o.objApi])byObj[o.objApi]={isCustom:o.objApi.endsWith('__c'),objHeb:'',fields:[]};
+    if(!byObj[o.objApi])byObj[o.objApi]={objHeb:'',fields:[]};
     byObj[o.objApi].objHeb=o.heb;
   });
   if(!Object.keys(byObj).length)return null;
 
-  let xml=`<?xml version="1.0" encoding="UTF-8"?>\n<Translations xmlns="http://soap.sforce.com/2006/04/metadata">\n`;
+  let xml='<?xml version="1.0" encoding="UTF-8"?>\n';
+  xml+='<Translations xmlns="http://soap.sforce.com/2006/04/metadata">\n';
 
   Object.entries(byObj).forEach(([objApi,data])=>{
-    if(data.isCustom){
-      // Custom object — wrap in <customObjects>
-      xml+=`  <customObjects>\n    <name>${escXML(objApi)}</name>\n`;
-      if(data.objHeb){xml+=`    <label>${escXML(data.objHeb)}</label>\n    <pluralLabel>${escXML(data.objHeb)}</pluralLabel>\n`;}
-      data.fields.forEach(f=>{
-        // field name inside customObjects must NOT have __c
-        xml+=`    <customFields>\n      <name>${escXML(f.api.replace(/__c$/i,''))}</name>\n      <label>${escXML(f.heb)}</label>\n    </customFields>\n`;
-      });
-      xml+=`  </customObjects>\n`;
-    } else {
-  // Standard object — must use <customObjects> wrapper even for standard objects
-  xml+=`  <customObjects>\n    <name>${escXML(objApi)}</name>\n`;
-  if(data.objHeb){
-    xml+=`    <label>${escXML(data.objHeb)}</label>\n`;
-    xml+=`    <pluralLabel>${escXML(data.objHeb)}</pluralLabel>\n`;
-  }
-  data.fields.forEach(f=>{
-    xml+=`    <customFields>\n      <name>${escXML(f.api.replace(/__c$/i,''))}</name>\n      <label>${escXML(f.heb)}</label>\n    </customFields>\n`;
-  });
-  xml+=`  </customObjects>\n`;
-}
+    xml+='  <customObjects>\n';
+    xml+='    <name>'+escXML(objApi)+'</name>\n';
+    if(data.objHeb){
+      xml+='    <label>'+escXML(data.objHeb)+'</label>\n';
+      xml+='    <pluralLabel>'+escXML(data.objHeb)+'</pluralLabel>\n';
+    }
+    data.fields.forEach(f=>{
+      const devName=f.api.replace(/__c$/i,'');
+      xml+='    <customFields>\n';
+      xml+='      <name>'+escXML(devName)+'</name>\n';
+      xml+='      <label>'+escXML(f.heb)+'</label>\n';
+      xml+='    </customFields>\n';
+    });
+    xml+='  </customObjects>\n';
   });
 
-  xml+=`</Translations>`;
+  xml+='</Translations>';
   return xml;
 }
 
