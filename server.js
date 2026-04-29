@@ -68,3 +68,44 @@ app.get('/health', (req, res) => res.json({ status: 'ok', version: '3.0' }));
 
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`SF Proxy v3 running on port ${PORT}`));
+// Direct translation via SOAP Metadata API (no ZIP)
+app.post('/translate-direct', async (req, res) => {
+  try {
+    const instanceUrl = req.headers['x-sf-instance'];
+    const token = req.headers['x-sf-token'];
+    const { objectName, fieldName, hebrewLabel } = req.body;
+
+    const soapBody = `<?xml version="1.0" encoding="UTF-8"?>
+<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:met="http://soap.sforce.com/2006/04/metadata">
+  <soapenv:Header>
+    <met:SessionHeader><met:sessionId>${token}</met:sessionId></met:SessionHeader>
+    <met:CallOptions><met:client>MyApp</met:client></met:CallOptions>
+  </soapenv:Header>
+  <soapenv:Body>
+    <met:upsertMetadata>
+      <met:metadata xsi:type="met:Translations" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+        <met:fullName>he</met:fullName>
+        <met:customObjects>
+          <met:name>${objectName}</met:name>
+          <met:customFields>
+            <met:name>${fieldName}</met:name>
+            <met:label>${hebrewLabel}</met:label>
+          </met:customFields>
+        </met:customObjects>
+      </met:metadata>
+    </met:upsertMetadata>
+  </soapenv:Body>
+</soapenv:Envelope>`;
+
+    const response = await fetch(`${instanceUrl}/services/Soap/m/59.0`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/xml; charset=UTF-8', 'SOAPAction': '""' },
+      body: soapBody
+    });
+    const text = await response.text();
+    console.log('TRANSLATE DIRECT response:', text.substring(0, 500));
+    res.status(response.status).set('Content-Type', 'text/xml').send(text);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
