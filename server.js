@@ -12,7 +12,6 @@ app.post('/soap-login', async (req, res) => {
   try {
     const env = req.headers['x-sf-env'] || 'https://login.salesforce.com';
     const { username, password, clientId, clientSecret } = req.body;
-
     const params = new URLSearchParams({
       grant_type: 'password',
       client_id: clientId,
@@ -20,23 +19,14 @@ app.post('/soap-login', async (req, res) => {
       username: username,
       password: password
     });
-
     const response = await fetch(`${env}/services/oauth2/token`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: params.toString()
     });
-
     const data = await response.json();
-
     if (data.access_token) {
-      res.json({
-        success: true,
-        sessionId: data.access_token,
-        instanceUrl: data.instance_url,
-        orgId: data.id?.split('/')[4] || '',
-        userId: data.id?.split('/')[5] || ''
-      });
+      res.json({ success: true, sessionId: data.access_token, instanceUrl: data.instance_url, orgId: data.id?.split('/')[4] || '', userId: data.id?.split('/')[5] || '' });
     } else {
       res.status(400).json({ success: false, error: data.error_description || data.error });
     }
@@ -45,6 +35,7 @@ app.post('/soap-login', async (req, res) => {
   }
 });
 
+// General Salesforce REST API proxy
 app.post('/api', async (req, res) => {
   try {
     const url = req.headers['x-sf-url'];
@@ -62,7 +53,47 @@ app.post('/api', async (req, res) => {
   }
 });
 
-app.get('/health', (req, res) => res.json({ status: 'ok' }));
+// Translation SOAP API proxy
+app.post('/translate', async (req, res) => {
+  try {
+    const instanceUrl = req.headers['x-sf-instance'];
+    const token = req.headers['x-sf-token'];
+    const response = await fetch(`${instanceUrl}/services/Soap/m/59.0`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'text/xml',
+        'SOAPAction': 'retrieve'
+      },
+      body: req.body
+    });
+    const text = await response.text();
+    res.status(response.status).send(text);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Deploy metadata (ZIP) via Metadata API SOAP
+app.post('/metadata-deploy', async (req, res) => {
+  try {
+    const instanceUrl = req.headers['x-sf-instance'];
+    const token = req.headers['x-sf-token'];
+    const response = await fetch(`${instanceUrl}/services/Soap/m/59.0`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'text/xml',
+        'SOAPAction': 'deploy'
+      },
+      body: req.body
+    });
+    const text = await response.text();
+    res.status(response.status).send(text);
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+app.get('/health', (req, res) => res.json({ status: 'ok', version: '2.0' }));
 
 const PORT = process.env.PORT || 3000;
-app.listen(PORT, () => console.log(`SF Proxy running on port ${PORT}`));
+app.listen(PORT, () => console.log(`SF Proxy v2 running on port ${PORT}`));
