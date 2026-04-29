@@ -923,7 +923,7 @@ function buildTranslationXML(fields){
     xml+=`  <customObjects>\n    <name>${escXML(objApi)}</name>\n`;
     if(data.objHeb)xml+=`    <label>${escXML(data.objHeb)}</label>\n    <pluralLabel>${escXML(data.objHeb)}</pluralLabel>\n`;
     data.fields.forEach(f=>{
-      xml+=`    <customFields>\n      <name>${escXML(f.api)}</name>\n      <label>${escXML(f.heb)}</label>\n    </customFields>\n`;
+     xml+=`      <customFields>\n      <name>${escXML(f.api.replace('__c',''))}</name>\n      <label>${escXML(f.heb)}</label>\n    </customFields>\n`;
     });
     xml+=`  </customObjects>\n`;
   });
@@ -936,8 +936,8 @@ async function buildTranslationZip(fields){
   if(!hebFields.length)return null;
   const transXML=buildTranslationXML(hebFields);
   if(!transXML)return null;
-  const pkgXML=`<?xml version="1.0" encoding="UTF-8"?>\n<Package xmlns="http://soap.sforce.com/2006/04/metadata">\n  <types>\n    <members>iw</members>\n    <name>Translations</name>\n  </types>\n  <version>59.0</version>\n</Package>`;
-  zip.file('translations/iw.translation-meta.xml',transXML);
+  const pkgXML=`<?xml version="1.0" encoding="UTF-8"?>\n<Package xmlns="http://soap.sforce.com/2006/04/metadata">\n  <types>\n    <members>he</members>\n    <name>Translations</name>\n  </types>\n  <version>59.0</version>\n</Package>`;
+  zip.file('translations/he.translation-meta.xml', transXML);
   zip.file('package.xml',pkgXML);
   return await zip.generateAsync({type:'base64'});
 }
