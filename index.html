@@ -836,69 +836,32 @@ function buildTranslationXML(fields){
   return xml;
 }
 
-async function buildZipAndDeploy(fields,isDry){
+// Deploy Hebrew translations via direct upsertMetadata SOAP — no ZIP needed
+async function deployHebrewLabels(fields){
   const hebFields=fields.filter(f=>f.heb);
   if(!hebFields.length){addLog('deploy-log','[Hebrew] No Hebrew labels to deploy.','info');return;}
+  addLog('deploy-log',`[Hebrew] Deploying ${hebFields.length} label(s) via upsertMetadata...`,'trans');
 
-  addLog('deploy-log',`[Hebrew] Building translation ZIP for ${hebFields.length} field(s)...`,'trans');
-
-  const transXML=buildTranslationXML(hebFields);
-  if(!transXML){addLog('deploy-log','[Hebrew] Could not build translation XML.','warn');return;}
-
-  addLog('deploy-log','[Hebrew] Translation XML generated.','trans');
-
-  // Preview in log
-  addLog('deploy-log','[Hebrew] XML preview: '+transXML.substring(0,200)+'...','info');
-
-  const pkgXML=`<?xml version="1.0" encoding="UTF-8"?>\n<Package xmlns="http://soap.sforce.com/2006/04/metadata">\n  <types>\n    <members>he</members>\n    <name>Translations</name>\n  </types>\n  <version>59.0</version>\n</Package>`;
-
-  const zip=new JSZip();
-  zip.file('translations/he.translation-meta.xml',transXML);
-  zip.file('package.xml',pkgXML);
-  const base64=await zip.generateAsync({type:'base64'});
-
-  const deployXML=`<?xml version="1.0" encoding="UTF-8"?><soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:met="http://soap.sforce.com/2006/04/metadata"><soapenv:Header><met:SessionHeader><met:sessionId>${S.token}</met:sessionId></met:SessionHeader></soapenv:Header><soapenv:Body><met:deploy><met:ZipFile>${base64}</met:ZipFile><met:DeployOptions><met:checkOnly>${isDry}</met:checkOnly><met:rollbackOnError>true</met:rollbackOnError><met:singlePackage>true</met:singlePackage><met:ignoreWarnings>true</met:ignoreWarnings></met:DeployOptions></met:deploy></soapenv:Body></soapenv:Envelope>`;
-
-  addLog('deploy-log','[Hebrew] Sending to Metadata API...','trans');
-
-  const res=await fetch(`${PROXY}/metadata-deploy`,{method:'POST',headers:{'Content-Type':'text/xml','x-sf-instance':S.instanceUrl,'x-sf-token':S.token},body:deployXML});
-  const text=await res.text();
-
-  if(!text.includes('<id>')){
-    addLog('deploy-log','[Hebrew] ⚠ Unexpected Metadata API response.','warn');
-    addLog('deploy-log','[Hebrew] Response: '+text.substring(0,300),'warn');
-    return;
-  }
-
-  const asyncId=text.match(/<id>(.*?)<\/id>/)?.[1];
-  addLog('deploy-log',`[Hebrew] Deploy started (ID: ${asyncId}) — polling...`,'trans');
-
-  // Poll for completion
-  const statusXML=`<?xml version="1.0" encoding="UTF-8"?><soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:met="http://soap.sforce.com/2006/04/metadata"><soapenv:Header><met:SessionHeader><met:sessionId>${S.token}</met:sessionId></met:SessionHeader></soapenv:Header><soapenv:Body><met:checkDeployStatus><met:asyncProcessId>${asyncId}</met:asyncProcessId><met:includeDetails>true</met:includeDetails></met:checkDeployStatus></soapenv:Body></soapenv:Envelope>`;
-
-  for(let i=0;i<20;i++){
-    await sleep(3000);
-    const sRes=await fetch(`${PROXY}/metadata-deploy`,{method:'POST',headers:{'Content-Type':'text/xml','x-sf-instance':S.instanceUrl,'x-sf-token':S.token},body:statusXML});
-    const sText=await sRes.text();
-    const done=sText.includes('<done>true</done>');
-    const success=sText.includes('<success>true</success>');
-    const status=sText.match(/<status>(.*?)<\/status>/)?.[1]||'Unknown';
-    const problem=sText.match(/<problem>(.*?)<\/problem>/)?.[1]||'';
-
-    if(done){
-      if(success){
-        addLog('deploy-log','[Hebrew] ✓ All Hebrew labels deployed successfully!','ok');
-        hebFields.forEach(f=>addLog('deploy-log',`[Hebrew]   ✓ ${f.objApi}.${f.api} → "${f.heb}"  (he)`,'ok'));
-        addLog('deploy-log','[Hebrew] Verify: Setup → Translate → Language: Hebrew → Custom Field','trans');
-      }else{
-        addLog('deploy-log',`[Hebrew] ✕ Translation deploy failed: ${status}`,'err');
-        if(problem)addLog('deploy-log',`[Hebrew] Problem: ${problem}`,'err');
+  for(const f of hebFields){
+    const devName=f.api.replace(/__c$/i,'');
+    addLog('deploy-log',`[Hebrew] Setting "${f.heb}" on ${f.objApi}.${devName}...`,'trans');
+    try{
+      const res=await fetch(`${PROXY}/translate-direct`,{
+        method:'POST',
+        headers:{'Content-Type':'application/json','x-sf-instance':S.instanceUrl,'x-sf-token':S.token},
+        body:JSON.stringify({objectName:f.objApi,fieldName:devName,hebrewLabel:f.heb})
+      });
+      const text=await res.text();
+      if(text.includes('<success>true</success>')||text.includes('upsertMetadataResponse')||text.includes('SaveResult')){
+        addLog('deploy-log',`[Hebrew] ✓ ${devName} → "${f.heb}"  (he)`,'ok');
+      } else {
+        const err=text.match(/<message>(.*?)<\/message>/)?.[1]||text.match(/<problem>(.*?)<\/problem>/)?.[1]||text.substring(0,300);
+        addLog('deploy-log',`[Hebrew] ⚠ ${devName}: ${err}`,'warn');
       }
-      return;
-    }
-    addLog('deploy-log',`[Hebrew] Polling: ${status}...`,'trans');
+    }catch(e){addLog('deploy-log',`[Hebrew] Error on ${devName}: ${e.message}`,'warn');}
+    await sleep(400);
   }
-  addLog('deploy-log','[Hebrew] ⚠ Polling timed out. Check Salesforce deploy status manually.','warn');
+  addLog('deploy-log','[Hebrew] Done. Verify: Setup → Translate → Language: Hebrew → Custom Field','trans');
 }
 
 // ── Deploy panel ──────────────────────────────────────────────
@@ -969,7 +932,7 @@ async function runDeploy(dryRun){
       if(hebFields.length){addLog('deploy-log',`[Hebrew] (dry) Would deploy ${hebFields.length} Hebrew label(s).`,'ok');hebFields.forEach(f=>addLog('deploy-log',`[Hebrew]   "${f.heb}" → ${f.objApi}.${f.api}`,'ok'));}
     }else{
       try{
-        await buildZipAndDeploy(fields,false);
+        await deployHebrewLabels(fields);
       }catch(e){addLog('deploy-log','[Hebrew] Error: '+e.message,'err');}
     }
   }
