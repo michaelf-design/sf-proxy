@@ -9,106 +9,134 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <style>
 :root {
-  --bg: #0a0a0f; --surface: #12121a; --surface2: #1a1a26; --surface3: #22223a;
-  --accent: #6c63ff; --success: #00d4aa; --danger: #ff6b6b; --warn: #f5c842;
-  --text: #e8e8f0; --text2: #8888aa; --text3: #44445a;
-  --border: #2a2a40; --border2: #3a3a55;
-  --radius: 8px; --font-head: 'Syne',sans-serif; --font-mono: 'IBM Plex Mono',monospace;
+  --bg:#0a0a0f;--surface:#12121a;--surface2:#1a1a26;--surface3:#22223a;
+  --accent:#6c63ff;--success:#00d4aa;--danger:#ff6b6b;--warn:#f5c842;
+  --text:#e8e8f0;--text2:#8888aa;--text3:#44445a;
+  --border:#2a2a40;--border2:#3a3a55;
+  --radius:8px;--font-head:'Syne',sans-serif;--font-mono:'IBM Plex Mono',monospace;
 }
-* { box-sizing: border-box; margin: 0; padding: 0; }
-html, body { height: 100%; }
-body { background: var(--bg); color: var(--text); font-family: var(--font-mono); font-size: 13px; display: flex; flex-direction: column; }
-.shell { display: flex; flex-direction: column; height: 100vh; }
-.topbar { background: var(--surface); border-bottom: 1px solid var(--border); padding: 0 20px; display: flex; align-items: center; height: 52px; flex-shrink: 0; }
-.logo { font-family: var(--font-head); font-size: 15px; font-weight: 700; color: var(--text); display: flex; align-items: center; gap: 8px; margin-right: 24px; }
-.logo-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); box-shadow: 0 0 8px var(--accent); }
-.nav-tabs { display: flex; height: 100%; }
-.nav-tab { height: 100%; padding: 0 16px; display: flex; align-items: center; font-size: 11px; font-weight: 500; color: var(--text2); cursor: pointer; border-bottom: 2px solid transparent; letter-spacing: 0.08em; text-transform: uppercase; transition: all 0.15s; }
-.nav-tab:hover { color: var(--text); }
-.nav-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
-.topbar-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
-.conn-badge { display: flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 20px; font-size: 11px; font-weight: 500; border: 1px solid; transition: all 0.3s; white-space: nowrap; }
-.conn-badge.disconnected { border-color: var(--border2); color: var(--text2); background: var(--surface2); }
-.conn-badge.connecting { border-color: var(--warn); color: var(--warn); background: rgba(245,200,66,0.08); }
-.conn-badge.connected { border-color: var(--success); color: var(--success); background: rgba(0,212,170,0.08); }
-.conn-badge.error { border-color: var(--danger); color: var(--danger); background: rgba(255,107,107,0.08); }
-.bdot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; flex-shrink: 0; }
-.bdot.pulse { animation: bpulse 1.2s ease-in-out infinite; }
-@keyframes bpulse { 0%,100%{opacity:1}50%{opacity:0.3} }
-.body { display: grid; grid-template-columns: 260px 1fr; flex: 1; overflow: hidden; }
-.sidebar { background: var(--surface); border-right: 1px solid var(--border); padding: 16px; display: flex; flex-direction: column; gap: 14px; overflow-y: auto; }
-.main { padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; }
-.panel { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; }
-.panel-head { padding: 9px 14px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
-.panel-title { font-size: 10px; font-weight: 500; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text2); }
-.panel-body { padding: 14px; display: flex; flex-direction: column; gap: 10px; }
-.fg { display: flex; flex-direction: column; gap: 5px; }
-.fg label { font-size: 10px; color: var(--text2); letter-spacing: 0.06em; text-transform: uppercase; }
-input[type=text], input[type=password], input[type=url], input[type=email], select, textarea {
-  background: var(--bg); border: 1px solid var(--border2); border-radius: var(--radius);
-  color: var(--text); font-family: var(--font-mono); font-size: 12px; padding: 7px 10px; width: 100%; transition: border-color 0.15s; }
-input:focus, select:focus, textarea:focus { outline: none; border-color: var(--accent); }
-input::placeholder, textarea::placeholder { color: var(--text3); }
-select option { background: var(--surface2); }
-.g2 { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.g3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
-.btn { padding: 7px 14px; border-radius: var(--radius); font-family: var(--font-mono); font-size: 11px; font-weight: 500; cursor: pointer; border: 1px solid; transition: all 0.15s; display: inline-flex; align-items: center; gap: 6px; white-space: nowrap; }
-.btn:disabled { opacity: 0.35; cursor: not-allowed; }
-.btn-accent { background: var(--accent); border-color: var(--accent); color: #fff; }
-.btn-accent:hover:not(:disabled) { filter: brightness(1.15); }
-.btn-ghost { background: transparent; border-color: var(--border2); color: var(--text2); }
-.btn-ghost:hover:not(:disabled) { border-color: var(--border); color: var(--text); background: var(--surface3); }
-.btn-success { background: rgba(0,212,170,0.12); border-color: var(--success); color: var(--success); }
-.btn-success:hover:not(:disabled) { background: rgba(0,212,170,0.2); }
-.btn-danger { background: rgba(255,107,107,0.1); border-color: var(--danger); color: var(--danger); }
-.btn-warn { background: rgba(245,200,66,0.1); border-color: var(--warn); color: var(--warn); }
-.btn-sm { padding: 4px 9px; font-size: 10px; }
-.btn-full { width: 100%; justify-content: center; }
-.toggle-row { display: flex; background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 2px; gap: 2px; }
-.toggle-opt { flex: 1; padding: 5px; text-align: center; border-radius: 5px; cursor: pointer; font-size: 10px; font-weight: 500; color: var(--text2); transition: all 0.15s; letter-spacing: 0.06em; }
-.toggle-opt.active { background: var(--accent); color: #fff; }
-.tag { display: inline-flex; align-items: center; gap: 4px; padding: 2px 8px; border-radius: 20px; font-size: 10px; font-weight: 500; }
-.tag-accent { background: rgba(108,99,255,0.15); color: var(--accent); border: 1px solid rgba(108,99,255,0.3); }
-.tag-warn { background: rgba(245,200,66,0.1); color: var(--warn); border: 1px solid rgba(245,200,66,0.25); }
-.tag-gray { background: var(--surface3); color: var(--text2); border: 1px solid var(--border2); }
-.tag-success { background: rgba(0,212,170,0.12); color: var(--success); border: 1px solid rgba(0,212,170,0.25); }
-.log-box { background: var(--bg); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px; max-height: 240px; overflow-y: auto; font-size: 11px; line-height: 1.8; }
-.ll { display: flex; gap: 10px; }
-.ll .ts { color: var(--text3); flex-shrink: 0; }
-.ll.ok .msg { color: var(--success); }
-.ll.err .msg { color: var(--danger); }
-.ll.warn .msg { color: var(--warn); }
-.ll.info .msg { color: var(--text2); }
-.ll.trans .msg { color: var(--accent); }
-.stat-card { background: var(--surface2); border: 1px solid var(--border); border-radius: var(--radius); padding: 10px 12px; }
-.stat-card .num { font-family: var(--font-head); font-size: 24px; font-weight: 700; color: var(--text); }
-.stat-card .lbl { font-size: 10px; color: var(--text3); margin-top: 2px; letter-spacing: 0.08em; text-transform: uppercase; }
-.queue-wrap { overflow-x: auto; }
-.qtable { width: 100%; border-collapse: collapse; min-width: 700px; }
-.qtable th { font-size: 10px; font-weight: 500; color: var(--text3); padding: 7px 10px; text-align: left; border-bottom: 1px solid var(--border); letter-spacing: 0.08em; text-transform: uppercase; white-space: nowrap; }
-.qtable td { padding: 6px 10px; border-bottom: 1px solid var(--border); vertical-align: middle; font-size: 12px; }
-.qtable tr:last-child td { border-bottom: none; }
-.qtable tr:hover td { background: rgba(255,255,255,0.02); }
-.empty-q { text-align: center; padding: 36px 20px; color: var(--text3); }
-.upload-zone { border: 1px dashed var(--border2); border-radius: var(--radius); padding: 20px; text-align: center; cursor: pointer; transition: all 0.15s; }
-.upload-zone:hover, .upload-zone.drag { border-color: var(--accent); background: rgba(108,99,255,0.05); }
-.upload-zone p { font-size: 11px; color: var(--text2); margin-top: 6px; }
-.hint { font-size: 11px; color: var(--text3); line-height: 1.6; }
-.info-box { background: rgba(108,99,255,0.06); border: 1px solid rgba(108,99,255,0.2); border-radius: var(--radius); padding: 10px 12px; font-size: 11px; color: var(--accent); line-height: 1.6; }
-.rollback-info { background: rgba(245,200,66,0.06); border: 1px solid rgba(245,200,66,0.2); border-radius: var(--radius); padding: 10px 12px; font-size: 11px; color: var(--warn); line-height: 1.6; }
-.proxy-info { background: rgba(0,212,170,0.05); border: 1px solid rgba(0,212,170,0.2); border-radius: var(--radius); padding: 10px 12px; font-size: 11px; color: var(--success); line-height: 1.6; }
-.tab-view { display: none; }
-.tab-view.active { display: flex; flex-direction: column; gap: 14px; }
-.profile-list { display: flex; flex-direction: column; gap: 5px; max-height: 120px; overflow-y: auto; }
-.profile-item { display: flex; align-items: center; gap: 8px; padding: 4px 6px; border-radius: 5px; cursor: pointer; }
-.profile-item:hover { background: var(--surface3); }
-.profile-item input[type=checkbox] { accent-color: var(--accent); width: 13px; height: 13px; }
-.profile-item label { font-size: 11px; color: var(--text); cursor: pointer; }
-.sep { height: 1px; background: var(--border); margin: 2px 0; }
-.conn-detail { background: rgba(0,212,170,0.05); border: 1px solid rgba(0,212,170,0.2); border-radius: var(--radius); padding: 12px 14px; font-size: 12px; line-height: 2; display: none; }
-.conn-detail .k { color: var(--text3); }
-.conn-detail .v { color: var(--success); }
-.step-badge { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; background: var(--accent); color: #fff; font-size: 10px; font-weight: 700; margin-right: 4px; flex-shrink: 0; }
+*{box-sizing:border-box;margin:0;padding:0;}
+html,body{height:100%;}
+body{background:var(--bg);color:var(--text);font-family:var(--font-mono);font-size:13px;display:flex;flex-direction:column;}
+.shell{display:flex;flex-direction:column;height:100vh;}
+.topbar{background:var(--surface);border-bottom:1px solid var(--border);padding:0 20px;display:flex;align-items:center;height:52px;flex-shrink:0;gap:8px;}
+.logo{font-family:var(--font-head);font-size:15px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:8px;margin-right:16px;}
+.logo-dot{width:8px;height:8px;border-radius:50%;background:var(--accent);box-shadow:0 0 8px var(--accent);}
+.nav-tabs{display:flex;height:100%;}
+.nav-tab{height:100%;padding:0 14px;display:flex;align-items:center;font-size:11px;font-weight:500;color:var(--text2);cursor:pointer;border-bottom:2px solid transparent;letter-spacing:0.08em;text-transform:uppercase;transition:all 0.15s;}
+.nav-tab:hover{color:var(--text);}
+.nav-tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+.topbar-right{margin-left:auto;display:flex;align-items:center;gap:8px;}
+.conn-badge{display:flex;align-items:center;gap:6px;padding:4px 12px;border-radius:20px;font-size:11px;font-weight:500;border:1px solid;transition:all 0.3s;white-space:nowrap;max-width:220px;overflow:hidden;text-overflow:ellipsis;}
+.conn-badge.disconnected{border-color:var(--border2);color:var(--text2);background:var(--surface2);}
+.conn-badge.connecting{border-color:var(--warn);color:var(--warn);background:rgba(245,200,66,0.08);}
+.conn-badge.connected{border-color:var(--success);color:var(--success);background:rgba(0,212,170,0.08);}
+.conn-badge.error{border-color:var(--danger);color:var(--danger);background:rgba(255,107,107,0.08);}
+.bdot{width:6px;height:6px;border-radius:50%;background:currentColor;flex-shrink:0;}
+.bdot.pulse{animation:bpulse 1.2s ease-in-out infinite;}
+@keyframes bpulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:0.4;transform:scale(0.7)}}
+.body{display:grid;grid-template-columns:240px 1fr;flex:1;overflow:hidden;}
+.sidebar{background:var(--surface);border-right:1px solid var(--border);padding:14px;display:flex;flex-direction:column;gap:12px;overflow-y:auto;}
+.main{padding:16px;overflow-y:auto;display:flex;flex-direction:column;gap:14px;}
+.panel{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;}
+.panel-head{padding:9px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;}
+.panel-title{font-size:10px;font-weight:500;letter-spacing:0.12em;text-transform:uppercase;color:var(--text2);}
+.panel-body{padding:14px;display:flex;flex-direction:column;gap:10px;}
+.fg{display:flex;flex-direction:column;gap:4px;}
+.fg label{font-size:10px;color:var(--text2);letter-spacing:0.06em;text-transform:uppercase;}
+input[type=text],input[type=password],input[type=url],input[type=email],select,textarea{
+  background:var(--bg);border:1px solid var(--border2);border-radius:var(--radius);
+  color:var(--text);font-family:var(--font-mono);font-size:12px;padding:6px 10px;width:100%;transition:border-color 0.15s;}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--accent);}
+input::placeholder,textarea::placeholder{color:var(--text3);}
+select option{background:var(--surface2);}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;}
+.btn{padding:6px 13px;border-radius:var(--radius);font-family:var(--font-mono);font-size:11px;font-weight:500;cursor:pointer;border:1px solid;transition:all 0.15s;display:inline-flex;align-items:center;gap:6px;white-space:nowrap;}
+.btn:disabled{opacity:0.35;cursor:not-allowed;}
+.btn-accent{background:var(--accent);border-color:var(--accent);color:#fff;}
+.btn-accent:hover:not(:disabled){filter:brightness(1.15);}
+.btn-ghost{background:transparent;border-color:var(--border2);color:var(--text2);}
+.btn-ghost:hover:not(:disabled){border-color:var(--border);color:var(--text);background:var(--surface3);}
+.btn-success{background:rgba(0,212,170,0.12);border-color:var(--success);color:var(--success);}
+.btn-success:hover:not(:disabled){background:rgba(0,212,170,0.2);}
+.btn-danger{background:rgba(255,107,107,0.1);border-color:var(--danger);color:var(--danger);}
+.btn-danger:hover:not(:disabled){background:rgba(255,107,107,0.2);}
+.btn-warn{background:rgba(245,200,66,0.1);border-color:var(--warn);color:var(--warn);}
+.btn-sm{padding:3px 8px;font-size:10px;}
+.btn-full{width:100%;justify-content:center;}
+.toggle-row{display:flex;background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:2px;gap:2px;}
+.toggle-opt{flex:1;padding:5px;text-align:center;border-radius:5px;cursor:pointer;font-size:10px;font-weight:500;color:var(--text2);transition:all 0.15s;letter-spacing:0.06em;}
+.toggle-opt.active{background:var(--accent);color:#fff;}
+.tag{display:inline-flex;align-items:center;gap:4px;padding:2px 7px;border-radius:20px;font-size:10px;font-weight:500;}
+.tag-accent{background:rgba(108,99,255,0.15);color:var(--accent);border:1px solid rgba(108,99,255,0.3);}
+.tag-success{background:rgba(0,212,170,0.12);color:var(--success);border:1px solid rgba(0,212,170,0.25);}
+.tag-warn{background:rgba(245,200,66,0.1);color:var(--warn);border:1px solid rgba(245,200,66,0.25);}
+.tag-gray{background:var(--surface3);color:var(--text2);border:1px solid var(--border2);}
+.log-box{background:var(--bg);border:1px solid var(--border);border-radius:var(--radius);padding:10px;max-height:180px;overflow-y:auto;font-size:11px;line-height:1.8;}
+.ll{display:flex;gap:8px;}
+.ll .ts{color:var(--text3);flex-shrink:0;}
+.ll.ok .msg{color:var(--success);}
+.ll.err .msg{color:var(--danger);}
+.ll.warn .msg{color:var(--warn);}
+.ll.info .msg{color:var(--text2);}
+.ll.trans .msg{color:var(--accent);}
+.stat-card{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:8px 10px;}
+.stat-card .num{font-family:var(--font-head);font-size:22px;font-weight:700;color:var(--text);}
+.stat-card .lbl{font-size:10px;color:var(--text3);margin-top:1px;letter-spacing:0.08em;text-transform:uppercase;}
+.queue-wrap{overflow-x:auto;}
+.qtable{width:100%;border-collapse:collapse;min-width:680px;}
+.qtable th{font-size:10px;font-weight:500;color:var(--text3);padding:6px 10px;text-align:left;border-bottom:1px solid var(--border);letter-spacing:0.08em;text-transform:uppercase;white-space:nowrap;}
+.qtable td{padding:5px 10px;border-bottom:1px solid var(--border);vertical-align:middle;font-size:12px;}
+.qtable tr:last-child td{border-bottom:none;}
+.qtable tr:hover td{background:rgba(255,255,255,0.02);}
+.empty-q{text-align:center;padding:30px 20px;color:var(--text3);}
+.upload-zone{border:1px dashed var(--border2);border-radius:var(--radius);padding:16px;text-align:center;cursor:pointer;transition:all 0.15s;}
+.upload-zone:hover,.upload-zone.drag{border-color:var(--accent);background:rgba(108,99,255,0.05);}
+.upload-zone p{font-size:11px;color:var(--text2);margin-top:4px;}
+.hint{font-size:11px;color:var(--text3);line-height:1.6;}
+.info-box{background:rgba(108,99,255,0.06);border:1px solid rgba(108,99,255,0.2);border-radius:var(--radius);padding:10px 12px;font-size:11px;color:var(--accent);line-height:1.6;}
+.success-box{background:rgba(0,212,170,0.06);border:1px solid rgba(0,212,170,0.2);border-radius:var(--radius);padding:10px 12px;font-size:11px;color:var(--success);line-height:1.6;}
+.warn-box{background:rgba(245,200,66,0.06);border:1px solid rgba(245,200,66,0.2);border-radius:var(--radius);padding:10px 12px;font-size:11px;color:var(--warn);line-height:1.6;}
+.tab-view{display:none;}
+.tab-view.active{display:flex;flex-direction:column;gap:14px;}
+.sep{height:1px;background:var(--border);margin:2px 0;}
+.conn-detail{background:rgba(0,212,170,0.05);border:1px solid rgba(0,212,170,0.2);border-radius:var(--radius);padding:10px 14px;font-size:11px;line-height:2;display:none;}
+.conn-detail .k{color:var(--text3);}
+.conn-detail .v{color:var(--success);}
+
+/* ── Object Section ── */
+.obj-section{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:12px;}
+.obj-section-head{padding:10px 14px;background:var(--surface3);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px;}
+.obj-section-head select{flex:1;max-width:280px;font-size:12px;padding:5px 8px;height:30px;}
+.obj-section-head input{flex:1;max-width:160px;font-size:12px;padding:5px 8px;height:30px;}
+.obj-section-fields{padding:10px;}
+.field-row{display:grid;grid-template-columns:1fr 130px 90px 80px 1fr 28px;gap:6px;align-items:center;margin-bottom:6px;}
+.field-row input,.field-row select{font-size:11px;padding:4px 7px;height:28px;}
+.field-row-head{display:grid;grid-template-columns:1fr 130px 90px 80px 1fr 28px;gap:6px;padding:0 0 4px 0;border-bottom:1px solid var(--border);margin-bottom:6px;}
+.field-row-head span{font-size:10px;color:var(--text3);letter-spacing:0.06em;text-transform:uppercase;}
+.pl-row{grid-column:1/-1;padding:4px 6px 6px 6px;display:none;}
+.pl-row input{font-size:11px;padding:4px 8px;height:28px;}
+.rel-row{grid-column:1/-1;padding:4px 6px 6px 6px;display:none;gap:8px;}
+.rel-row input,.rel-row select{font-size:11px;padding:4px 8px;height:28px;}
+.del-row-btn{width:24px;height:24px;border-radius:4px;border:none;background:transparent;color:var(--text3);cursor:pointer;font-size:14px;display:flex;align-items:center;justify-content:center;padding:0;}
+.del-row-btn:hover{background:rgba(255,107,107,0.15);color:var(--danger);}
+.add-field-btn{margin-top:4px;font-size:10px;padding:4px 10px;}
+
+/* ── Saved creds indicator ── */
+.saved-indicator{display:inline-flex;align-items:center;gap:5px;font-size:10px;color:var(--success);padding:2px 8px;border-radius:20px;background:rgba(0,212,170,0.08);border:1px solid rgba(0,212,170,0.2);}
+
+/* ── Keepalive timer ── */
+.keepalive-badge{font-size:10px;color:var(--text3);padding:3px 8px;border-radius:20px;border:1px solid var(--border);background:var(--surface2);}
+
+/* ── Object picker search ── */
+.obj-search-wrap{position:relative;}
+.obj-dropdown{position:absolute;top:100%;left:0;right:0;background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius);max-height:180px;overflow-y:auto;z-index:100;display:none;}
+.obj-dropdown.open{display:block;}
+.obj-opt{padding:6px 10px;font-size:12px;cursor:pointer;color:var(--text);}
+.obj-opt:hover,.obj-opt.selected{background:var(--accent);color:#fff;}
+.obj-opt .obj-opt-sub{font-size:10px;color:var(--text3);margin-left:6px;}
+.obj-opt:hover .obj-opt-sub{color:rgba(255,255,255,0.6);}
 </style>
 </head>
 <body>
@@ -122,6 +150,8 @@ select option { background: var(--surface2); }
       <div class="nav-tab" onclick="switchTab('deploy')">Deploy</div>
     </div>
     <div class="topbar-right">
+      <span class="keepalive-badge" id="keepalive-badge" style="display:none;">⟳ Session active</span>
+      <button class="btn btn-ghost btn-sm" id="refresh-btn" onclick="refreshMetadata()" style="display:none;" title="Refresh objects, fields and profiles from Salesforce">⟳ Refresh metadata</button>
       <div class="conn-badge disconnected" id="conn-badge"><span class="bdot" id="bdot"></span><span id="badge-text">Not connected</span></div>
     </div>
   </div>
@@ -130,56 +160,48 @@ select option { background: var(--surface2); }
     <div class="sidebar">
       <div>
         <div style="font-size:10px;color:var(--text3);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px;">Queue Summary</div>
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
           <div class="stat-card"><div class="num" id="s-total">0</div><div class="lbl">Staged</div></div>
           <div class="stat-card"><div class="num" id="s-objs">0</div><div class="lbl">Objects</div></div>
           <div class="stat-card"><div class="num" id="s-fields">0</div><div class="lbl">Fields</div></div>
-          <div class="stat-card"><div class="num" id="s-heb">0</div><div class="lbl">With Hebrew</div></div>
+          <div class="stat-card"><div class="num" id="s-heb">0</div><div class="lbl">Hebrew</div></div>
         </div>
       </div>
       <div class="sep"></div>
       <div>
-        <div style="font-size:10px;color:var(--text3);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:8px;">Target Profiles</div>
-        <div class="profile-list">
-          <div class="profile-item"><input type="checkbox" id="p1" checked><label for="p1">System Administrator</label></div>
-          <div class="profile-item"><input type="checkbox" id="p2"><label for="p2">Standard User</label></div>
-          <div class="profile-item"><input type="checkbox" id="p3"><label for="p3">Read Only</label></div>
-          <div class="profile-item"><input type="checkbox" id="p4"><label for="p4">Custom: Sales</label></div>
-          <div class="profile-item"><input type="checkbox" id="p5"><label for="p5">Custom: Support</label></div>
+        <div style="font-size:10px;color:var(--text3);letter-spacing:0.1em;text-transform:uppercase;margin-bottom:6px;">Target Profiles</div>
+        <div id="profile-list" style="display:flex;flex-direction:column;gap:4px;max-height:130px;overflow-y:auto;">
+          <div style="font-size:11px;color:var(--text3);">Connect to load profiles...</div>
         </div>
       </div>
       <div class="sep"></div>
-      <div>
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
-          <input type="checkbox" id="dry-run" style="accent-color:var(--warn);width:14px;height:14px;">
-          <label for="dry-run" style="font-size:11px;color:var(--warn);cursor:pointer;">Dry Run (checkOnly)</label>
+      <div style="display:flex;flex-direction:column;gap:8px;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <input type="checkbox" id="dry-run" style="accent-color:var(--warn);width:13px;height:13px;">
+          <label for="dry-run" style="font-size:11px;color:var(--warn);cursor:pointer;">Dry Run</label>
         </div>
-        <p class="hint">Validates without making changes.</p>
-      </div>
-      <div class="sep"></div>
-      <div>
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px;">
-          <input type="checkbox" id="deploy-translations" checked style="accent-color:var(--accent);width:14px;height:14px;">
+        <div style="display:flex;align-items:center;gap:8px;">
+          <input type="checkbox" id="deploy-translations" checked style="accent-color:var(--accent);width:13px;height:13px;">
           <label for="deploy-translations" style="font-size:11px;color:var(--accent);cursor:pointer;">Deploy Hebrew translations</label>
         </div>
-        <p class="hint">Automatically pushes Hebrew labels to Translation Workbench after each deploy.</p>
       </div>
       <div class="sep"></div>
-      <div class="rollback-info">⚡ rollbackOnError: true — any failure rolls back the entire batch.</div>
+      <div class="warn-box">⚡ rollbackOnError: true</div>
     </div>
 
     <div class="main">
 
       <!-- CONNECTION TAB -->
       <div class="tab-view active" id="tab-connect">
-        <div class="proxy-info">
-          ✓ Proxy: <strong>https://sf-proxy-ncj5.onrender.com</strong><br>
-          Wake it first: <a href="https://sf-proxy-ncj5.onrender.com/health" target="_blank" style="color:var(--accent);">open health check ↗</a>
-        </div>
-
         <div class="panel">
-          <div class="panel-head"><span class="panel-title">Salesforce Login</span></div>
+          <div class="panel-head">
+            <span class="panel-title">Salesforce Credentials</span>
+            <span id="saved-ind" style="display:none;" class="saved-indicator">✓ Saved</span>
+          </div>
           <div class="panel-body">
+            <div class="info-box" id="auto-conn-msg" style="display:none;">
+              ✓ Saved credentials found — attempting auto-connect...
+            </div>
             <div class="toggle-row" id="env-toggle">
               <div class="toggle-opt active" onclick="setEnv('production',this)">Production / Developer</div>
               <div class="toggle-opt" onclick="setEnv('sandbox',this)">Sandbox</div>
@@ -201,34 +223,34 @@ select option { background: var(--surface2); }
               <label>Consumer Key (Client ID)</label>
               <input type="text" id="client-id" value="3MVG9rZjd7MXFdLg9yNdQbidPPjhQhk9WKL49NJU5OyFUiIXeHMf1_fU8A5qBgW_kRZbQec8d.EahWFKQKEHz" />
             </div>
-            <div class="hint">
-              Password + Security Token are combined automatically.<br>
-              Get token: Salesforce avatar → Settings → Reset My Security Token → check email.
+            <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+              <input type="checkbox" id="remember-me" checked style="accent-color:var(--accent);width:13px;height:13px;">
+              <label for="remember-me" style="font-size:11px;color:var(--text2);cursor:pointer;">Remember credentials on this device</label>
             </div>
+            <div class="hint">Credentials are saved in your browser's local storage — never sent anywhere except directly to Salesforce via your own proxy.</div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;">
               <button class="btn btn-accent" id="connect-btn" onclick="connect()">⚡ Connect</button>
               <button class="btn btn-danger" id="disconnect-btn" onclick="disconnect()" style="display:none;">Disconnect</button>
+              <button class="btn btn-ghost btn-sm" onclick="clearSavedCreds()" style="font-size:10px;">Clear saved credentials</button>
             </div>
           </div>
         </div>
 
         <div class="conn-detail" id="conn-detail">
-          <div><span class="k">Org ID: </span><span class="v" id="cd-org"></span></div>
+          <div><span class="k">Org: </span><span class="v" id="cd-org-name"></span></div>
           <div><span class="k">Instance: </span><span class="v" id="cd-instance"></span></div>
-          <div><span class="k">User ID: </span><span class="v" id="cd-user"></span></div>
-          <div><span class="k">Status: </span><span class="v">Ready to deploy ✓</span></div>
+          <div><span class="k">User: </span><span class="v" id="cd-user"></span></div>
+          <div><span class="k">Session: </span><span class="v">Active — auto-refreshes every 10 min ✓</span></div>
         </div>
 
         <div class="panel">
-          <div class="panel-head"><span class="panel-title">Translation Pre-requisite</span></div>
+          <div class="panel-head">
+            <span class="panel-title">Translation Pre-requisite</span>
+          </div>
           <div class="panel-body">
             <div class="info-box">
-              <strong>One-time setup required for Hebrew translations:</strong><br><br>
-              <span class="step-badge">1</span> Setup → Quick Find → <strong>Translation Language Settings</strong><br>
-              <span class="step-badge">2</span> Click <strong>Add</strong><br>
-              <span class="step-badge">3</span> Select <strong>Hebrew (iw)</strong> → set to <strong>Active</strong><br>
-              <span class="step-badge">4</span> Click <strong>Save</strong><br><br>
-              Without this step, Hebrew label deployments will be skipped silently.
+              <strong>One-time setup for Hebrew translations:</strong><br><br>
+              Setup → Translation Language Settings → Add → <strong>Hebrew (iw)</strong> → Active → Save
             </div>
           </div>
         </div>
@@ -243,76 +265,30 @@ select option { background: var(--surface2); }
 
       <!-- BUILDER TAB -->
       <div class="tab-view" id="tab-builder">
-        <div class="g2">
-          <div class="panel">
-            <div class="panel-head"><span class="panel-title">Object Definition</span></div>
-            <div class="panel-body">
-              <div class="fg"><label>Object Label</label><input type="text" id="b-obj-label" placeholder="Work Order" oninput="autoObjApi()" /></div>
-              <div class="fg"><label>API Name</label><input type="text" id="b-obj-api" placeholder="Work_Order__c" /></div>
-              <div class="fg"><label>Hebrew Label עברית</label><input type="text" id="b-obj-heb" placeholder="הזמנת עבודה" dir="rtl" /></div>
-              <div class="fg"><label>Description</label><input type="text" id="b-obj-desc" placeholder="Optional..." /></div>
-              <button class="btn btn-ghost btn-full" onclick="stageObject()">+ Stage Object</button>
+        <div class="panel">
+          <div class="panel-head">
+            <span class="panel-title">Object Sections</span>
+            <div style="display:flex;gap:6px;">
+              <button class="btn btn-ghost btn-sm" onclick="addObjSection()">+ Add object section</button>
+              <button class="btn btn-ghost btn-sm" onclick="document.getElementById('file-in').click()">⬆ Import Excel</button>
+              <button class="btn btn-ghost btn-sm" onclick="downloadTemplate()">↓ Template</button>
             </div>
           </div>
-          <div class="panel">
-            <div class="panel-head"><span class="panel-title">Excel / CSV Import</span></div>
-            <div class="panel-body">
-              <div class="upload-zone" id="upload-zone" onclick="document.getElementById('file-in').click()" ondragover="event.preventDefault();this.classList.add('drag')" ondragleave="this.classList.remove('drag')" ondrop="handleDrop(event)">
-                <div style="font-size:22px;">⬆</div>
-                <p>Click or drag Excel / CSV here</p>
-                <p style="font-size:10px;color:var(--text3);margin-top:4px;">Columns: Object API | Field Label | API Name | Type | Required | Hebrew | Default | Help Text | Picklist Values</p>
-              </div>
-              <input type="file" id="file-in" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleFile(this.files[0])" />
-              <div class="hint">Need the format? <span style="color:var(--accent);cursor:pointer;" onclick="downloadTemplate()">Download template.xlsx</span></div>
-            </div>
+          <div class="panel-body" style="padding:10px;">
+            <div class="hint" style="margin-bottom:10px;">Each section = one object. Add as many fields as needed per section. Add more sections for more objects.</div>
+            <div id="sections-container"></div>
+            <input type="file" id="file-in" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleFile(this.files[0])" />
           </div>
         </div>
 
         <div class="panel">
-          <div class="panel-head"><span class="panel-title">Add Field</span></div>
+          <div class="panel-head"><span class="panel-title">Stage to Queue</span></div>
           <div class="panel-body">
-            <div class="g3">
-              <div class="fg"><label>Target Object API</label><input type="text" id="b-obj-ref" placeholder="Account or Work_Order__c" /></div>
-              <div class="fg"><label>Field Label</label><input type="text" id="b-flabel" placeholder="Customer Name" oninput="autoFieldApi()" /></div>
-              <div class="fg"><label>Field API Name</label><input type="text" id="b-fapi" placeholder="Customer_Name__c" /></div>
-              <div class="fg"><label>Type</label>
-                <select id="b-ftype" onchange="onTypeChange()">
-                  <option>Text</option><option>TextArea</option><option>LongTextArea</option>
-                  <option>Number</option><option>Currency</option><option>Percent</option>
-                  <option>Checkbox</option><option>Date</option><option>DateTime</option>
-                  <option>Email</option><option>Phone</option><option>Url</option>
-                  <option>Picklist</option><option>MultiselectPicklist</option>
-                  <option>Lookup</option><option>MasterDetail</option>
-                  <option>AutoNumber</option><option>Formula</option>
-                </select>
-              </div>
-              <div class="fg"><label>Hebrew Label עברית</label><input type="text" id="b-fheb" placeholder="שם לקוח" dir="rtl" /></div>
-              <div class="fg" style="justify-content:flex-end;padding-top:18px;">
-                <div style="display:flex;align-items:center;gap:8px;">
-                  <input type="checkbox" id="b-freq" style="accent-color:var(--accent);width:14px;height:14px;">
-                  <label for="b-freq" style="font-size:11px;color:var(--text2);cursor:pointer;">Required</label>
-                </div>
-              </div>
-            </div>
-            <div id="pl-extra" style="display:none;">
-              <div class="fg"><label>Picklist Values (comma separated)</label><input type="text" id="b-plvals" placeholder="New, In Progress, Resolved, Closed" /></div>
-            </div>
-            <div id="rel-extra" style="display:none;">
-              <div class="g2">
-                <div class="fg"><label>Related Object</label><input type="text" id="b-relobj" placeholder="Account" /></div>
-                <div class="fg"><label>Relationship Type</label>
-                  <select id="b-reltype"><option value="Lookup">Lookup (optional)</option><option value="MasterDetail">Master-Detail (required)</option></select>
-                </div>
-              </div>
-            </div>
-            <div class="g2">
-              <div class="fg"><label>Default Value</label><input type="text" id="b-fdefault" placeholder="Optional..." /></div>
-              <div class="fg"><label>Help Text</label><input type="text" id="b-fhelp" placeholder="Tooltip shown to users..." /></div>
-            </div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;">
-              <button class="btn btn-accent" onclick="stageField()">+ Stage Field</button>
-              <button class="btn btn-ghost" onclick="loadExample()">Load example</button>
+              <button class="btn btn-accent" onclick="stageAllSections()">⚡ Stage all sections to queue</button>
+              <button class="btn btn-ghost" onclick="clearSections()">Clear sections</button>
             </div>
+            <div class="hint">Staging adds fields to the queue without deploying. Review in the Staging Queue tab, then deploy when ready.</div>
           </div>
         </div>
       </div>
@@ -337,8 +313,8 @@ select option { background: var(--surface2); }
             </table>
           </div>
           <div class="empty-q" id="empty-q">
-            <div style="font-size:26px;margin-bottom:8px;">⬡</div>
-            <p style="font-size:11px;">No items staged. Use Field Builder or import Excel.</p>
+            <div style="font-size:24px;margin-bottom:8px;">⬡</div>
+            <p style="font-size:11px;">No items staged. Use Field Builder and click "Stage all sections".</p>
           </div>
         </div>
       </div>
@@ -349,25 +325,12 @@ select option { background: var(--surface2); }
           <div class="panel-head"><span class="panel-title">Deployment Summary</span></div>
           <div class="panel-body">
             <div class="g3">
-              <div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;">Items</div><div style="font-size:22px;font-family:var(--font-head);color:var(--text);" id="d-count">0</div></div>
-              <div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;">Mode</div><div id="d-mode" style="font-size:13px;color:var(--warn);">Dry Run</div></div>
-              <div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;">Hebrew fields</div><div id="d-heb" style="font-size:13px;color:var(--accent);">0</div></div>
+              <div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;">Items</div><div style="font-size:20px;font-family:var(--font-head);color:var(--text);" id="d-count">0</div></div>
+              <div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;">Mode</div><div id="d-mode" style="font-size:12px;color:var(--warn);">Dry Run</div></div>
+              <div><div style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;">Hebrew fields</div><div id="d-heb" style="font-size:12px;color:var(--accent);">0</div></div>
             </div>
           </div>
         </div>
-
-        <div class="panel">
-          <div class="panel-head"><span class="panel-title">Deploy Sequence</span></div>
-          <div class="panel-body">
-            <div style="display:flex;flex-direction:column;gap:6px;font-size:11px;color:var(--text2);">
-              <div style="display:flex;align-items:center;gap:8px;"><span class="step-badge">1</span> Create Custom Objects (if any)</div>
-              <div style="display:flex;align-items:center;gap:8px;"><span class="step-badge">2</span> Create Custom Fields (Tooling API)</div>
-              <div style="display:flex;align-items:center;gap:8px;"><span class="step-badge">3</span> Deploy Hebrew translations (Metadata API ZIP)</div>
-              <div style="display:flex;align-items:center;gap:8px;"><span class="step-badge">4</span> Confirm all items visible in Translation Workbench</div>
-            </div>
-          </div>
-        </div>
-
         <div class="panel">
           <div class="panel-head"><span class="panel-title">XML Preview</span></div>
           <div class="panel-body" style="padding:8px;">
@@ -376,10 +339,9 @@ select option { background: var(--surface2); }
               <button class="btn btn-ghost btn-sm" onclick="previewXML('translation')">Translation XML</button>
               <button class="btn btn-ghost btn-sm" onclick="copyXML()">Copy</button>
             </div>
-            <div class="log-box" id="xml-preview" style="white-space:pre;color:var(--text2);max-height:160px;font-size:10px;">Click a preview button to generate XML.</div>
+            <div class="log-box" id="xml-preview" style="white-space:pre;color:var(--text2);max-height:140px;font-size:10px;">Click a preview button.</div>
           </div>
         </div>
-
         <div class="panel">
           <div class="panel-head"><span class="panel-title">Deploy</span></div>
           <div class="panel-body">
@@ -387,14 +349,13 @@ select option { background: var(--surface2); }
               <button class="btn btn-warn" id="btn-dry" onclick="runDeploy(true)">🔍 Validate (Dry Run)</button>
               <button class="btn btn-success" id="btn-deploy" onclick="runDeploy(false)">⚡ Deploy to Salesforce</button>
             </div>
-            <div class="rollback-info">Objects → Fields → Hebrew Translations. Full rollback on any field error.</div>
+            <div class="warn-box">Objects → Fields → Hebrew Translations. Full rollback on any error.</div>
           </div>
         </div>
-
         <div class="panel">
           <div class="panel-head"><span class="panel-title">Deployment Log</span></div>
           <div class="panel-body" style="padding:8px;">
-            <div class="log-box" id="deploy-log"></div>
+            <div class="log-box" id="deploy-log" style="max-height:280px;"></div>
           </div>
         </div>
       </div>
@@ -404,64 +365,142 @@ select option { background: var(--surface2); }
 </div>
 
 <script>
-const PROXY = 'https://sf-proxy-ncj5.onrender.com';
-const PL_TYPES = new Set(['Picklist','MultiselectPicklist']);
-const REL_TYPES = new Set(['Lookup','MasterDetail']);
-let S = { env:'production', connected:false, token:'', instanceUrl:'', orgId:'', userId:'', queue:[] };
+const PROXY='https://sf-proxy-ncj5.onrender.com';
+const CREDS_KEY='sf_arch_creds_v2';
+const PL_TYPES=new Set(['Picklist','MultiselectPicklist']);
+const REL_TYPES=new Set(['Lookup','MasterDetail']);
+const FIELD_TYPES=['Text','TextArea','LongTextArea','Number','Currency','Percent','Checkbox','Date','DateTime','Email','Phone','Url','Picklist','MultiselectPicklist','Lookup','MasterDetail','AutoNumber','Formula'];
 
-// ── Utilities ────────────────────────────────────────────────
-function ts() { const n=new Date(); return `${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}:${String(n.getSeconds()).padStart(2,'0')}`; }
-function addLog(id, msg, type='info') {
-  const box=document.getElementById(id); if(!box) return;
-  const l=document.createElement('div'); l.className=`ll ${type}`;
+let S={env:'production',connected:false,token:'',instanceUrl:'',orgId:'',userId:'',orgName:'',queue:[],sfObjects:[],sfProfiles:[]};
+let keepaliveTimer=null;
+let sectionId=0;
+
+// ── Utilities ─────────────────────────────────────────────────
+function ts(){const n=new Date();return `${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}:${String(n.getSeconds()).padStart(2,'0')}`;}
+function addLog(id,msg,type='info'){
+  const box=document.getElementById(id);if(!box)return;
+  const l=document.createElement('div');l.className=`ll ${type}`;
   l.innerHTML=`<span class="ts">${ts()}</span><span class="msg">${msg}</span>`;
-  box.appendChild(l); box.scrollTop=box.scrollHeight;
+  box.appendChild(l);box.scrollTop=box.scrollHeight;
 }
-function setBadge(status, text) {
-  const b=document.getElementById('conn-badge'); b.className=`conn-badge ${status}`;
+function setBadge(status,text){
+  const b=document.getElementById('conn-badge');b.className=`conn-badge ${status}`;
   document.getElementById('bdot').className=`bdot ${status==='connecting'?'pulse':''}`;
   document.getElementById('badge-text').textContent=text;
 }
-function toApi(s) { return s.trim().replace(/\s+/g,'_').replace(/[^a-zA-Z0-9_]/g,''); }
-function escXML(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
-function sleep(ms) { return new Promise(r=>setTimeout(r,ms)); }
+function toApi(s){return s.trim().replace(/\s+/g,'_').replace(/[^a-zA-Z0-9_]/g,'');}
+function escXML(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');}
+function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
 
-// ── Tab navigation ───────────────────────────────────────────
-function switchTab(t) {
+// ── Tab navigation ────────────────────────────────────────────
+function switchTab(t){
   document.querySelectorAll('.tab-view').forEach(e=>e.classList.remove('active'));
   document.querySelectorAll('.nav-tab').forEach(e=>e.classList.remove('active'));
   document.getElementById('tab-'+t).classList.add('active');
-  ['connect','builder','queue','deploy'].forEach((tab,i)=>{ if(tab===t) document.querySelectorAll('.nav-tab')[i].classList.add('active'); });
-  if(t==='deploy') updateDeployPanel();
+  ['connect','builder','queue','deploy'].forEach((tab,i)=>{if(tab===t)document.querySelectorAll('.nav-tab')[i].classList.add('active');});
+  if(t==='deploy')updateDeployPanel();
 }
 
-function setEnv(env, el) {
+function setEnv(env,el){
   S.env=env;
   document.querySelectorAll('.toggle-opt').forEach(o=>o.classList.remove('active'));
   el.classList.add('active');
   document.getElementById('custom-row').style.display=env==='custom'?'':'none';
 }
 
-function getLoginUrl() {
-  if(S.env==='sandbox') return 'https://test.salesforce.com';
-  if(S.env==='custom') return document.getElementById('custom-url').value.trim().replace(/\/$/,'');
-  return 'https://login.salesforce.com';
+function getLoginUrl(){
+  if(S.env==='sandbox')return'https://test.salesforce.com';
+  if(S.env==='custom')return document.getElementById('custom-url').value.trim().replace(/\/$/,'');
+  return'https://login.salesforce.com';
 }
 
-// ── Connection ───────────────────────────────────────────────
-async function connect() {
+// ── Credential persistence ────────────────────────────────────
+function saveCreds(){
+  if(!document.getElementById('remember-me').checked)return;
+  const creds={
+    env:S.env,
+    username:document.getElementById('username').value,
+    password:document.getElementById('password').value,
+    secToken:document.getElementById('sec-token').value,
+    clientId:document.getElementById('client-id').value,
+    clientSecret:document.getElementById('client-secret').value,
+    customUrl:document.getElementById('custom-url').value
+  };
+  localStorage.setItem(CREDS_KEY,JSON.stringify(creds));
+  document.getElementById('saved-ind').style.display='';
+}
+
+function loadSavedCreds(){
+  try{
+    const raw=localStorage.getItem(CREDS_KEY);
+    if(!raw)return false;
+    const c=JSON.parse(raw);
+    document.getElementById('username').value=c.username||'';
+    document.getElementById('password').value=c.password||'';
+    document.getElementById('sec-token').value=c.secToken||'';
+    document.getElementById('client-id').value=c.clientId||'3MVG9rZjd7MXFdLg9yNdQbidPPjhQhk9WKL49NJU5OyFUiIXeHMf1_fU8A5qBgW_kRZbQec8d.EahWFKQKEHz';
+    document.getElementById('client-secret').value=c.clientSecret||'';
+    document.getElementById('custom-url').value=c.customUrl||'';
+    if(c.env){
+      S.env=c.env;
+      const idx=['production','sandbox','custom'].indexOf(c.env);
+      if(idx>=0){const opts=document.querySelectorAll('.toggle-opt');opts.forEach(o=>o.classList.remove('active'));opts[idx].classList.add('active');}
+      document.getElementById('custom-row').style.display=c.env==='custom'?'':'none';
+    }
+    document.getElementById('saved-ind').style.display='';
+    return !!(c.username&&c.password&&c.clientSecret);
+  }catch(e){return false;}
+}
+
+function clearSavedCreds(){
+  localStorage.removeItem(CREDS_KEY);
+  document.getElementById('saved-ind').style.display='none';
+  addLog('conn-log','Saved credentials cleared.','warn');
+}
+
+// ── Keepalive ─────────────────────────────────────────────────
+function startKeepalive(){
+  stopKeepalive();
+  document.getElementById('keepalive-badge').style.display='';
+  keepaliveTimer=setInterval(async()=>{
+    if(!S.connected||!S.token)return;
+    try{
+      const res=await fetch(`${PROXY}/api`,{
+        method:'POST',
+        headers:{'Content-Type':'application/json','x-sf-url':`${S.instanceUrl}/services/data/v59.0/`,'x-sf-token':S.token,'x-sf-method':'GET'},
+        body:JSON.stringify({})
+      });
+      if(res.ok){
+        addLog('conn-log','Session keepalive ✓','info');
+      } else {
+        addLog('conn-log','Session may have expired — reconnecting...','warn');
+        await connect(true);
+      }
+    }catch(e){addLog('conn-log','Keepalive ping failed: '+e.message,'warn');}
+  },10*60*1000); // every 10 minutes
+}
+
+function stopKeepalive(){
+  if(keepaliveTimer){clearInterval(keepaliveTimer);keepaliveTimer=null;}
+  document.getElementById('keepalive-badge').style.display='none';
+}
+
+// ── Connection ────────────────────────────────────────────────
+async function connect(silent=false){
   const user=document.getElementById('username').value.trim();
   const pass=document.getElementById('password').value;
   const secToken=document.getElementById('sec-token').value.trim();
   const clientId=document.getElementById('client-id').value.trim();
   const clientSecret=document.getElementById('client-secret').value.trim();
-  if(!user||!pass){addLog('conn-log','Username and password are required.','err');return;}
-  if(!clientSecret){addLog('conn-log','Consumer Secret is required.','err');return;}
+  if(!user||!pass){if(!silent)addLog('conn-log','Username and password are required.','err');return;}
+  if(!clientSecret){if(!silent)addLog('conn-log','Consumer Secret is required.','err');return;}
+
   const btn=document.getElementById('connect-btn');
-  btn.disabled=true; btn.textContent='Connecting...';
+  btn.disabled=true;btn.textContent='Connecting...';
   setBadge('connecting','Connecting...');
-  addLog('conn-log',`Connecting to ${getLoginUrl()} via proxy...`,'info');
-  try {
+  if(!silent)addLog('conn-log',`Connecting to ${getLoginUrl()}...`,'info');
+
+  try{
     const res=await fetch(`${PROXY}/soap-login`,{
       method:'POST',
       headers:{'Content-Type':'application/json','x-sf-env':getLoginUrl()},
@@ -469,101 +508,324 @@ async function connect() {
     });
     const data=await res.json();
     if(data.success&&data.sessionId){
-      S.token=data.sessionId; S.instanceUrl=data.instanceUrl;
-      S.orgId=data.orgId||''; S.userId=data.userId||''; S.connected=true;
-      const orgName=S.instanceUrl.replace('https://','').split('.')[0];
-      setBadge('connected',`Connected: ${orgName}`);
-      addLog('conn-log','✓ OAuth login successful!','ok');
-      addLog('conn-log',`Instance: ${S.instanceUrl}`,'ok');
-      addLog('conn-log',`Org ID: ${S.orgId}`,'ok');
-      addLog('conn-log','Ready to deploy fields and Hebrew translations.','ok');
+      S.token=data.sessionId;S.instanceUrl=data.instanceUrl;
+      S.orgId=data.orgId||'';S.userId=data.userId||'';S.connected=true;
+      S.orgName=S.instanceUrl.replace('https://','').split('.')[0];
+      setBadge('connected',`${S.orgName}`);
+      addLog('conn-log',`✓ Connected to ${S.instanceUrl}`,'ok');
       document.getElementById('conn-detail').style.display='';
-      document.getElementById('cd-org').textContent=S.orgId;
       document.getElementById('cd-instance').textContent=S.instanceUrl;
       document.getElementById('cd-user').textContent=S.userId;
+      document.getElementById('cd-org-name').textContent=S.orgId;
       document.getElementById('disconnect-btn').style.display='';
-    } else {
+      document.getElementById('refresh-btn').style.display='';
+      document.getElementById('auto-conn-msg').style.display='none';
+      saveCreds();
+      startKeepalive();
+      await refreshMetadata(true);
+    }else{
       setBadge('error','Login failed');
       const errMsg=data.error||data.message||JSON.stringify(data);
       addLog('conn-log',`✕ ${errMsg}`,'err');
-      if(errMsg.includes('invalid_client')) addLog('conn-log','Check Consumer Key and Consumer Secret.','warn');
-      if(errMsg.includes('invalid_grant')) addLog('conn-log','Check username, password and security token.','warn');
-      if(errMsg.includes('username-password')) addLog('conn-log','Enable: Setup → OAuth and OpenID Connect Settings → Allow OAuth Username-Password Flows.','warn');
+      if(errMsg.includes('invalid_client'))addLog('conn-log','Check Consumer Key and Consumer Secret.','warn');
+      if(errMsg.includes('invalid_grant'))addLog('conn-log','Check username, password and security token.','warn');
+      if(errMsg.includes('username-password'))addLog('conn-log','Enable: Setup → OAuth and OpenID Connect Settings → Allow OAuth Username-Password Flows.','warn');
     }
-  } catch(e) {
+  }catch(e){
     setBadge('error','Proxy error');
     addLog('conn-log',`Proxy error: ${e.message}`,'err');
-    addLog('conn-log','Wake the proxy first: open https://sf-proxy-ncj5.onrender.com/health','warn');
+    addLog('conn-log','Wake proxy first: https://sf-proxy-ncj5.onrender.com/health','warn');
   }
-  btn.disabled=false; btn.textContent='⚡ Connect';
+  btn.disabled=false;btn.textContent='⚡ Connect';
 }
 
-function disconnect() {
-  S={...S,connected:false,token:'',instanceUrl:'',orgId:'',userId:''};
+function disconnect(){
+  S={...S,connected:false,token:'',instanceUrl:'',orgId:'',userId:'',orgName:'',sfObjects:[],sfProfiles:[]};
   setBadge('disconnected','Not connected');
   document.getElementById('conn-detail').style.display='none';
   document.getElementById('disconnect-btn').style.display='none';
+  document.getElementById('refresh-btn').style.display='none';
+  stopKeepalive();
   addLog('conn-log','Disconnected.','warn');
+  renderProfiles([]);
 }
 
-// ── Field builder ────────────────────────────────────────────
-function autoObjApi() { const a=document.getElementById('b-obj-api'); if(!a.dataset.m) a.value=toApi(document.getElementById('b-obj-label').value)+(document.getElementById('b-obj-label').value.trim()?'__c':''); }
-document.getElementById('b-obj-api').addEventListener('input',function(){this.dataset.m='1';});
-function autoFieldApi() { const a=document.getElementById('b-fapi'); if(!a.dataset.m) a.value=toApi(document.getElementById('b-flabel').value)+(document.getElementById('b-flabel').value.trim()?'__c':''); }
-document.getElementById('b-fapi').addEventListener('input',function(){this.dataset.m='1';});
-function onTypeChange() {
-  const t=document.getElementById('b-ftype').value;
-  document.getElementById('pl-extra').style.display=PL_TYPES.has(t)?'':'none';
-  document.getElementById('rel-extra').style.display=REL_TYPES.has(t)?'':'none';
+// ── Refresh metadata ──────────────────────────────────────────
+async function refreshMetadata(silent=false){
+  if(!S.connected){addLog('conn-log','Connect first to refresh metadata.','warn');return;}
+  const btn=document.getElementById('refresh-btn');
+  if(btn){btn.disabled=true;btn.textContent='⟳ Refreshing...';}
+  if(!silent)addLog('conn-log','Refreshing metadata from org...','info');
+
+  await Promise.all([loadObjects(silent),loadProfiles(silent)]);
+
+  if(btn){btn.disabled=false;btn.textContent='⟳ Refresh metadata';}
+  if(!silent)addLog('conn-log','✓ Metadata refreshed.','ok');
+
+  // Rebuild all object dropdowns in sections
+  document.querySelectorAll('.section-obj-select').forEach(sel=>rebuildObjSelect(sel));
 }
 
-function stageObject() {
-  const lbl=document.getElementById('b-obj-label').value.trim();
-  const api=document.getElementById('b-obj-api').value.trim();
-  if(!lbl||!api){alert('Object label and API name required.');return;}
-  S.queue.push({kind:'object',objLabel:lbl,objApi:api,heb:document.getElementById('b-obj-heb').value.trim(),desc:document.getElementById('b-obj-desc').value.trim()});
-  refreshQueue(); updateStats();
-  ['b-obj-label','b-obj-api','b-obj-heb','b-obj-desc'].forEach(id=>{const e=document.getElementById(id);if(e){e.value='';if(e.dataset)delete e.dataset.m;}});
+async function sfGet(path){
+  const res=await fetch(`${PROXY}/api`,{
+    method:'POST',
+    headers:{'Content-Type':'application/json','x-sf-url':`${S.instanceUrl}${path}`,'x-sf-token':S.token,'x-sf-method':'GET'},
+    body:JSON.stringify({})
+  });
+  return await res.json();
 }
 
-function stageField() {
-  const objRef=document.getElementById('b-obj-ref').value.trim();
-  const lbl=document.getElementById('b-flabel').value.trim();
-  const api=document.getElementById('b-fapi').value.trim();
-  const type=document.getElementById('b-ftype').value;
-  if(!objRef||!lbl||!api){alert('Object API, field label and API name required.');return;}
-  S.queue.push({kind:'field',objApi:objRef,label:lbl,api,type,
-    heb:document.getElementById('b-fheb').value.trim(),
-    req:document.getElementById('b-freq').checked,
-    defaultVal:document.getElementById('b-fdefault').value.trim(),
-    helpText:document.getElementById('b-fhelp').value.trim(),
-    picklistValues:PL_TYPES.has(type)?document.getElementById('b-plvals').value.split(',').map(v=>v.trim()).filter(Boolean):[],
-    relObject:document.getElementById('b-relobj').value.trim(),
-    relType:document.getElementById('b-reltype').value});
-  refreshQueue(); updateStats();
-  ['b-flabel','b-fapi','b-fheb','b-fdefault','b-fhelp','b-plvals','b-relobj'].forEach(id=>{const e=document.getElementById(id);if(e){e.value='';if(e.dataset)delete e.dataset.m;}});
-  document.getElementById('b-freq').checked=false;
+async function loadObjects(silent){
+  try{
+    const data=await sfGet('/services/data/v59.0/sobjects/');
+    if(data.sobjects){
+      S.sfObjects=data.sobjects
+        .filter(o=>o.createable&&o.queryable)
+        .map(o=>({label:o.label,api:o.name,custom:o.custom}))
+        .sort((a,b)=>a.label.localeCompare(b.label));
+      if(!silent)addLog('conn-log',`Loaded ${S.sfObjects.length} objects.`,'ok');
+    }
+  }catch(e){if(!silent)addLog('conn-log','Could not load objects: '+e.message,'warn');}
 }
 
-// ── Queue ────────────────────────────────────────────────────
-function updateStats() {
+async function loadProfiles(silent){
+  try{
+    const data=await sfGet('/services/data/v59.0/query/?q=SELECT+Id,Name+FROM+Profile+ORDER+BY+Name+LIMIT+50');
+    if(data.records){
+      S.sfProfiles=data.records.map(p=>({id:p.Id,name:p.Name}));
+      renderProfiles(S.sfProfiles);
+      if(!silent)addLog('conn-log',`Loaded ${S.sfProfiles.length} profiles.`,'ok');
+    }
+  }catch(e){if(!silent)addLog('conn-log','Could not load profiles: '+e.message,'warn');}
+}
+
+function renderProfiles(profiles){
+  const list=document.getElementById('profile-list');
+  if(!profiles.length){list.innerHTML='<div style="font-size:11px;color:var(--text3);">Connect to load profiles...</div>';return;}
+  list.innerHTML=profiles.map((p,i)=>`
+    <div style="display:flex;align-items:center;gap:6px;padding:3px 5px;border-radius:4px;cursor:pointer;" onmouseenter="this.style.background='var(--surface3)'" onmouseleave="this.style.background=''" >
+      <input type="checkbox" id="prof-${i}" ${p.name==='System Administrator'?'checked':''} style="accent-color:var(--accent);width:12px;height:12px;" />
+      <label for="prof-${i}" style="font-size:11px;color:var(--text);cursor:pointer;">${p.name}</label>
+    </div>`).join('');
+}
+
+// ── Object section builder ────────────────────────────────────
+function addObjSection(prefillObj){
+  const id=sectionId++;
+  const sec=document.createElement('div');
+  sec.className='obj-section';
+  sec.id='sec-'+id;
+  sec.innerHTML=`
+    <div class="obj-section-head">
+      <span style="font-size:10px;color:var(--text3);text-transform:uppercase;letter-spacing:0.08em;flex-shrink:0;">Object</span>
+      <div class="obj-search-wrap" style="flex:1;max-width:300px;position:relative;">
+        <input type="text" class="section-obj-input" id="sec-obj-input-${id}" placeholder="Search or type object API name..." value="${prefillObj||''}" autocomplete="off"
+          oninput="filterObjDropdown(${id})" onfocus="openObjDropdown(${id})" onblur="setTimeout(()=>closeObjDropdown(${id}),200)" />
+        <div class="obj-dropdown" id="sec-obj-dropdown-${id}"></div>
+      </div>
+      <input type="text" id="sec-obj-heb-${id}" placeholder="Hebrew name (optional)" dir="rtl" style="flex:1;max-width:160px;font-size:12px;padding:5px 8px;height:30px;border:1px solid var(--border2);border-radius:var(--radius);background:var(--bg);color:var(--text);font-family:var(--font-mono);" />
+      <button class="btn btn-ghost btn-sm" onclick="removeSec(${id})" style="margin-left:auto;color:var(--danger);border-color:var(--danger);">✕ Remove</button>
+    </div>
+    <div class="obj-section-fields" id="sec-fields-${id}">
+      <div class="field-row-head">
+        <span>Field Label</span>
+        <span>API Name</span>
+        <span>Type</span>
+        <span>Required</span>
+        <span>Hebrew Label</span>
+        <span></span>
+      </div>
+      <div id="sec-rows-${id}"></div>
+      <button class="btn btn-ghost add-field-btn" onclick="addFieldRow(${id})">+ Add field</button>
+    </div>`;
+  document.getElementById('sections-container').appendChild(sec);
+  rebuildObjDropdown(id);
+  addFieldRow(id);
+  addFieldRow(id);
+}
+
+function removeSec(id){
+  const el=document.getElementById('sec-'+id);
+  if(el)el.remove();
+}
+
+function clearSections(){
+  document.getElementById('sections-container').innerHTML='';
+  sectionId=0;
+}
+
+// Object dropdown
+function rebuildObjDropdown(secId){
+  const dropdown=document.getElementById(`sec-obj-dropdown-${secId}`);
+  if(!dropdown)return;
+  const objects=S.sfObjects.length?S.sfObjects:[{label:'Standard Objects',api:'Account',custom:false},{label:'Contact',api:'Contact',custom:false},{label:'Opportunity',api:'Opportunity',custom:false},{label:'Lead',api:'Lead',custom:false},{label:'Case',api:'Case',custom:false}];
+  dropdown.innerHTML=objects.map(o=>`
+    <div class="obj-opt" onmousedown="pickObj(${secId},'${o.api}','${o.label.replace(/'/g,"\\'")}')">
+      ${o.label} ${o.custom?'<span class="obj-opt-sub">custom</span>':'<span class="obj-opt-sub">standard</span>'}
+    </div>`).join('');
+}
+
+function rebuildObjSelect(sel){rebuildObjDropdown(parseInt(sel.dataset.secid));}
+
+function filterObjDropdown(secId){
+  const val=document.getElementById(`sec-obj-input-${secId}`).value.toLowerCase();
+  const dropdown=document.getElementById(`sec-obj-dropdown-${secId}`);
+  const objects=S.sfObjects.length?S.sfObjects:[];
+  const filtered=val?objects.filter(o=>o.label.toLowerCase().includes(val)||o.api.toLowerCase().includes(val)):objects;
+  dropdown.innerHTML=filtered.slice(0,30).map(o=>`
+    <div class="obj-opt" onmousedown="pickObj(${secId},'${o.api}','${o.label.replace(/'/g,"\\'")}')">
+      ${o.label} ${o.custom?'<span class="obj-opt-sub">custom</span>':'<span class="obj-opt-sub">standard</span>'}
+    </div>`).join('');
+  openObjDropdown(secId);
+}
+
+function pickObj(secId,api,label){
+  const inp=document.getElementById(`sec-obj-input-${secId}`);
+  if(inp)inp.value=api;
+  closeObjDropdown(secId);
+}
+
+function openObjDropdown(secId){
+  rebuildObjDropdown(secId);
+  const d=document.getElementById(`sec-obj-dropdown-${secId}`);
+  if(d)d.classList.add('open');
+}
+function closeObjDropdown(secId){
+  const d=document.getElementById(`sec-obj-dropdown-${secId}`);
+  if(d)d.classList.remove('open');
+}
+
+// ── Field rows ────────────────────────────────────────────────
+let fieldRowId=0;
+function addFieldRow(secId,data){
+  const d=data||{};
+  const rid=fieldRowId++;
+  const wrap=document.createElement('div');
+  wrap.id=`frow-${rid}`;
+  wrap.style.marginBottom='4px';
+
+  const typeOpts=FIELD_TYPES.map(t=>`<option value="${t}" ${(d.type||'Text')===t?'selected':''}>${t}</option>`).join('');
+  wrap.innerHTML=`
+    <div class="field-row" id="frow-inner-${rid}">
+      <input type="text" placeholder="Field Label" value="${escAttr(d.label||'')}" oninput="autoFapi(this,${rid})" style="font-size:11px;padding:4px 7px;height:28px;" />
+      <input type="text" id="fapi-${rid}" placeholder="Field_Name__c" value="${escAttr(d.api||'')}" oninput="this.dataset.m=1" style="font-size:11px;padding:4px 7px;height:28px;" />
+      <select id="ftype-${rid}" onchange="onFtypeChange(${rid})" style="font-size:11px;padding:4px 7px;height:28px;">${typeOpts}</select>
+      <div style="display:flex;align-items:center;justify-content:center;">
+        <input type="checkbox" ${d.req?'checked':''} style="accent-color:var(--accent);width:13px;height:13px;" />
+      </div>
+      <input type="text" placeholder="שם בעברית" value="${escAttr(d.heb||'')}" dir="rtl" style="font-size:11px;padding:4px 7px;height:28px;" />
+      <button class="del-row-btn" onclick="document.getElementById('frow-${rid}').remove()">×</button>
+    </div>
+    <div class="pl-row" id="pl-${rid}" style="${PL_TYPES.has(d.type||'')?'display:flex':'display:none'}">
+      <input type="text" placeholder="Picklist values (comma separated)" value="${escAttr((d.picklistValues||[]).join(', '))}" style="width:100%;font-size:11px;padding:4px 8px;height:28px;" />
+    </div>
+    <div class="rel-row" id="rel-${rid}" style="${REL_TYPES.has(d.type||'')?'display:flex':'display:none'}">
+      <input type="text" placeholder="Related object (e.g. Account)" value="${escAttr(d.relObject||'')}" style="flex:1;font-size:11px;padding:4px 8px;height:28px;" />
+      <select style="flex:1;font-size:11px;padding:4px 8px;height:28px;">
+        <option value="Lookup" ${(d.relType||'Lookup')==='Lookup'?'selected':''}>Lookup</option>
+        <option value="MasterDetail" ${d.relType==='MasterDetail'?'selected':''}>Master-Detail</option>
+      </select>
+    </div>`;
+
+  document.getElementById(`sec-rows-${secId}`).appendChild(wrap);
+}
+
+function escAttr(s){return String(s||'').replace(/"/g,'&quot;').replace(/</g,'&lt;');}
+
+function autoFapi(input,rid){
+  const apiEl=document.getElementById(`fapi-${rid}`);
+  if(!apiEl.dataset.m) apiEl.value=toApi(input.value)+(input.value.trim()?'__c':'');
+}
+
+function onFtypeChange(rid){
+  const t=document.getElementById(`ftype-${rid}`).value;
+  const pl=document.getElementById(`pl-${rid}`);
+  const rel=document.getElementById(`rel-${rid}`);
+  if(pl)pl.style.display=PL_TYPES.has(t)?'flex':'none';
+  if(rel)rel.style.display=REL_TYPES.has(t)?'flex':'none';
+}
+
+// ── Stage all sections ────────────────────────────────────────
+function stageAllSections(){
+  const sections=document.getElementById('sections-container').children;
+  if(!sections.length){alert('No sections to stage. Add at least one object section.');return;}
+  let added=0;
+  Array.from(sections).forEach(sec=>{
+    const secId=parseInt(sec.id.replace('sec-',''));
+    const objApi=document.getElementById(`sec-obj-input-${secId}`)?.value.trim();
+    const objHeb=document.getElementById(`sec-obj-heb-${secId}`)?.value.trim();
+    if(!objApi){return;}
+
+    // Stage rows
+    const rows=sec.querySelectorAll('[id^="frow-"]:not([id*="inner"])');
+    rows.forEach(rowWrap=>{
+      const rid=parseInt(rowWrap.id.replace('frow-',''));
+      const inner=document.getElementById(`frow-inner-${rid}`);
+      if(!inner)return;
+      const inputs=inner.querySelectorAll('input[type=text],select,input[type=checkbox]');
+      const label=inputs[0]?.value.trim();
+      const api=inputs[1]?.value.trim();
+      const type=document.getElementById(`ftype-${rid}`)?.value;
+      const req=inner.querySelector('input[type=checkbox]')?.checked;
+      const heb=inputs[3]?.value.trim();
+      if(!label&&!api)return;
+
+      // picklist values
+      const plRow=document.getElementById(`pl-${rid}`);
+      const plInput=plRow?.querySelector('input');
+      const picklistValues=PL_TYPES.has(type)&&plInput?plInput.value.split(',').map(v=>v.trim()).filter(Boolean):[];
+
+      // relationship
+      const relRow=document.getElementById(`rel-${rid}`);
+      const relInputs=relRow?relRow.querySelectorAll('input,select'):[];
+      const relObject=relInputs[0]?.value.trim()||'';
+      const relType=relInputs[1]?.value||'Lookup';
+
+      S.queue.push({kind:'field',objApi,label,api:api||(toApi(label)+'__c'),type,req:!!req,heb,picklistValues,relObject,relType,helpText:'',defaultVal:''});
+      added++;
+    });
+
+    // Also queue object hebrew if set
+    if(objHeb){
+      const existing=S.queue.find(i=>i.kind==='objLabel'&&i.objApi===objApi);
+      if(!existing) S.queue.push({kind:'objLabel',objApi,heb:objHeb});
+    }
+  });
+
+  refreshQueue();updateStats();
+  addLog('conn-log',`Staged ${added} field(s) to queue.`,'ok');
+  if(added) switchTab('queue');
+}
+
+// ── Queue ─────────────────────────────────────────────────────
+function updateStats(){
   const q=S.queue;
   document.getElementById('s-total').textContent=q.length;
-  document.getElementById('s-objs').textContent=q.filter(i=>i.kind==='object').length;
+  document.getElementById('s-objs').textContent=[...new Set(q.map(i=>i.objApi).filter(Boolean))].length;
   document.getElementById('s-fields').textContent=q.filter(i=>i.kind==='field').length;
   document.getElementById('s-heb').textContent=q.filter(i=>i.heb).length;
 }
 
-function refreshQueue() {
+function refreshQueue(){
   const tbody=document.getElementById('queue-body');
   const empty=document.getElementById('empty-q');
-  if(!S.queue.length){tbody.innerHTML='';empty.style.display='';return;}
+  const fields=S.queue.filter(i=>i.kind==='field');
+  if(!fields.length){tbody.innerHTML='';empty.style.display='';return;}
   empty.style.display='none';
-  tbody.innerHTML=S.queue.map((item,i)=>{
-    if(item.kind==='object') return `<tr><td><span class="tag tag-accent">Object</span></td><td><strong>${item.objApi}</strong></td><td>${item.objLabel}</td><td style="color:var(--text3);">${item.objApi}</td><td>—</td><td dir="rtl" style="color:var(--accent);">${item.heb||'—'}</td><td>—</td><td style="font-size:10px;color:var(--text3);">${item.desc||''}</td><td><button class="btn btn-ghost btn-sm" onclick="removeItem(${i})">✕</button></td></tr>`;
+  tbody.innerHTML=fields.map((item,i)=>{
     const det=item.picklistValues?.length?`${item.picklistValues.length} vals`:(item.relObject?`${item.relType}→${item.relObject}`:'');
     const hebCell=item.heb?`<span style="color:var(--accent);" dir="rtl">${item.heb}</span>`:'<span style="color:var(--text3);">—</span>';
-    return `<tr><td><span class="tag tag-gray">Field</span></td><td style="color:var(--text3);">${item.objApi}</td><td>${item.label}</td><td style="font-family:var(--font-mono);font-size:11px;color:var(--accent);">${item.api}</td><td><span class="tag tag-gray">${item.type}</span></td><td>${hebCell}</td><td>${item.req?'<span class="tag tag-warn">Yes</span>':'—'}</td><td style="font-size:10px;color:var(--text3);">${det}</td><td><button class="btn btn-ghost btn-sm" onclick="removeItem(${i})">✕</button></td></tr>`;
+    return `<tr>
+      <td><span class="tag tag-gray">Field</span></td>
+      <td style="color:var(--text2);font-size:11px;">${item.objApi}</td>
+      <td>${item.label}</td>
+      <td style="font-family:var(--font-mono);font-size:11px;color:var(--accent);">${item.api}</td>
+      <td><span class="tag tag-gray">${item.type}</span></td>
+      <td>${hebCell}</td>
+      <td>${item.req?'<span class="tag tag-warn">Yes</span>':'—'}</td>
+      <td style="font-size:10px;color:var(--text3);">${det}</td>
+      <td><button class="btn btn-ghost btn-sm" onclick="removeItem(${i})">✕</button></td>
+    </tr>`;
   }).join('');
 }
 
@@ -571,16 +833,7 @@ function removeItem(i){S.queue.splice(i,1);refreshQueue();updateStats();}
 function clearQueue(){if(confirm('Clear all staged items?')){S.queue=[];refreshQueue();updateStats();}}
 function exportQueue(){const b=new Blob([JSON.stringify(S.queue,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='sf-queue.json';a.click();}
 
-function loadExample(){
-  document.getElementById('b-obj-ref').value='Account';
-  document.getElementById('b-flabel').value='Customer Segment';
-  document.getElementById('b-fapi').value='Customer_Segment__c'; document.getElementById('b-fapi').dataset.m='1';
-  document.getElementById('b-ftype').value='Picklist'; onTypeChange();
-  document.getElementById('b-plvals').value='Enterprise, Mid-Market, SMB';
-  document.getElementById('b-fheb').value='סגמנט לקוח';
-  document.getElementById('b-freq').checked=false;
-}
-
+// ── Excel import ──────────────────────────────────────────────
 function handleFile(file){
   if(!file)return;
   const r=new FileReader();
@@ -589,41 +842,49 @@ function handleFile(file){
       const wb=XLSX.read(e.target.result,{type:'binary'});
       const ws=wb.Sheets[wb.SheetNames[0]];
       const rows=XLSX.utils.sheet_to_json(ws,{defval:''});
-      let added=0;
+      // Group by Object API and create sections
+      const grouped={};
       rows.forEach(r=>{
+        const objApi=String(r['Object API']||'').trim();
         const lbl=String(r['Field Label']||r['Label']||'').trim();
-        const api=String(r['API Name']||'').trim();
-        if(!lbl&&!api)return;
-        S.queue.push({kind:'field',objApi:String(r['Object API']||'').trim(),label:lbl,api:api||toApi(lbl)+'__c',
-          type:String(r['Type']||'Text').trim(),heb:String(r['Hebrew']||r['Hebrew Label']||'').trim(),
+        if(!lbl&&!objApi)return;
+        if(!grouped[objApi])grouped[objApi]=[];
+        grouped[objApi].push({
+          label:lbl,api:String(r['API Name']||'').trim(),type:String(r['Type']||'Text').trim(),
+          heb:String(r['Hebrew Label']||r['Hebrew']||'').trim(),
           req:['yes','true','1'].includes(String(r['Required']||'').toLowerCase()),
-          defaultVal:String(r['Default Value']||'').trim(),helpText:String(r['Help Text']||'').trim(),
           picklistValues:String(r['Picklist Values']||'').split(',').map(v=>v.trim()).filter(Boolean),
-          relObject:'',relType:'Lookup'});
-        added++;
+          relObject:'',relType:'Lookup'
+        });
       });
-      refreshQueue();updateStats();
-      addLog('conn-log',`Imported ${added} rows from ${file.name}`,'ok');
-      switchTab('queue');
+      let secCount=0;
+      Object.entries(grouped).forEach(([objApi,fields])=>{
+        addObjSection(objApi);
+        const secId=sectionId-1;
+        // clear auto-added rows
+        document.getElementById(`sec-rows-${secId}`).innerHTML='';
+        fields.forEach(f=>addFieldRow(secId,f));
+        secCount++;
+      });
+      addLog('conn-log',`Imported ${rows.length} rows into ${secCount} section(s) from ${file.name}`,'ok');
     }catch(err){addLog('conn-log',`Parse error: ${err.message}`,'err');}
   };
   r.readAsBinaryString(file);
 }
-function handleDrop(e){e.preventDefault();document.getElementById('upload-zone').classList.remove('drag');handleFile(e.dataTransfer.files[0]);}
 
 function downloadTemplate(){
   const ws=XLSX.utils.aoa_to_sheet([
-    ['Object API','Field Label','API Name','Type','Required','Hebrew Label','Default Value','Help Text','Picklist Values'],
-    ['Account','Customer Segment','Customer_Segment__c','Picklist','No','סגמנט לקוח','','','Enterprise,Mid-Market,SMB'],
-    ['Account','Contract Value','Contract_Value__c','Currency','No','שווי חוזה','','',''],
-    ['Account','Account Manager Hebrew','Account_Manager_HE__c','Text','No','מנהל חשבון','','','']
+    ['Object API','Field Label','API Name','Type','Required','Hebrew Label','Picklist Values'],
+    ['Account','Customer Segment','Customer_Segment__c','Picklist','No','סגמנט לקוח','Enterprise,Mid-Market,SMB'],
+    ['Account','Contract Value','Contract_Value__c','Currency','No','שווי חוזה',''],
+    ['Contact','Hebrew Name','Hebrew_Name__c','Text','No','שם בעברית',''],
   ]);
   const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Fields');
   XLSX.writeFile(wb,'sf-template.xlsx');
 }
 
-// ── XML Builders ─────────────────────────────────────────────
-function buildFieldMeta(f) {
+// ── XML Builders ──────────────────────────────────────────────
+function buildFieldMeta(f){
   const m={label:f.label,required:f.req&&f.type!=='Checkbox',description:f.helpText||''};
   if(f.type==='Text'){m.type='Text';m.length=255;}
   else if(f.type==='LongTextArea'){m.type='LongTextArea';m.length=32768;m.visibleLines=5;}
@@ -631,172 +892,85 @@ function buildFieldMeta(f) {
   else if(f.type==='Number'){m.type='Number';m.precision=18;m.scale=0;}
   else if(f.type==='Currency'||f.type==='Percent'){m.type=f.type;m.precision=18;m.scale=2;}
   else if(f.type==='Checkbox'){m.type='Checkbox';m.defaultValue=false;m.required=false;}
-  else if(f.type==='Date'){m.type='Date';}
-  else if(f.type==='DateTime'){m.type='DateTime';}
-  else if(f.type==='Email'){m.type='Email';}
-  else if(f.type==='Phone'){m.type='Phone';}
-  else if(f.type==='Url'){m.type='Url';}
+  else if(['Date','DateTime','Email','Phone','Url'].includes(f.type)){m.type=f.type;}
   else if(f.type==='AutoNumber'){m.type='AutoNumber';m.startingNumber=1;m.displayFormat='AN-{0000}';}
   else if(PL_TYPES.has(f.type)){
     m.type=f.type;
-    if(f.picklistValues?.length) m.valueSet={valueSetDefinition:{value:f.picklistValues.map(v=>({fullName:v,label:v,default:false}))}};
-    if(f.type==='MultiselectPicklist') m.visibleLines=4;
-  } else if(REL_TYPES.has(f.type)){
+    if(f.picklistValues?.length)m.valueSet={valueSetDefinition:{value:f.picklistValues.map(v=>({fullName:v,label:v,default:false}))}};
+    if(f.type==='MultiselectPicklist')m.visibleLines=4;
+  }else if(REL_TYPES.has(f.type)){
     m.type=f.type;m.referenceTo=f.relObject||'Account';
     m.relationshipName=(f.relObject||'Account').replace('__c','');
-    if(f.type==='MasterDetail') m.relationshipOrder=0;
-  } else { m.type=f.type; }
+    if(f.type==='MasterDetail')m.relationshipOrder=0;
+  }else{m.type=f.type;}
   return m;
 }
 
-// Build translation XML for Hebrew (iw) — groups fields by object
-function buildTranslationXML(fields) {
-  // group by object
-  const byObj = {};
-  fields.forEach(f => {
-    if (!f.heb) return;
-    if (!byObj[f.objApi]) byObj[f.objApi] = { objHeb: '', fields: [] };
+function buildTranslationXML(fields){
+  const byObj={};
+  fields.forEach(f=>{
+    if(!f.heb)return;
+    if(!byObj[f.objApi])byObj[f.objApi]={objHeb:'',fields:[]};
     byObj[f.objApi].fields.push(f);
   });
-  // also include object-level hebrew labels from queue
-  S.queue.filter(i=>i.kind==='object'&&i.heb).forEach(o=>{
-    if(!byObj[o.objApi]) byObj[o.objApi]={objHeb:'',fields:[]};
+  S.queue.filter(i=>i.kind==='objLabel'&&i.heb).forEach(o=>{
+    if(!byObj[o.objApi])byObj[o.objApi]={objHeb:'',fields:[]};
     byObj[o.objApi].objHeb=o.heb;
   });
-  if(!Object.keys(byObj).length) return null;
-
-  let xml=`<?xml version="1.0" encoding="UTF-8"?>\n`;
-  xml+=`<Translations xmlns="http://soap.sforce.com/2006/04/metadata">\n`;
+  if(!Object.keys(byObj).length)return null;
+  let xml=`<?xml version="1.0" encoding="UTF-8"?>\n<Translations xmlns="http://soap.sforce.com/2006/04/metadata">\n`;
   Object.entries(byObj).forEach(([objApi,data])=>{
-    xml+=`  <customObjects>\n`;
-    xml+=`    <name>${escXML(objApi)}</name>\n`;
-    if(data.objHeb){
-      xml+=`    <label>${escXML(data.objHeb)}</label>\n`;
-      xml+=`    <pluralLabel>${escXML(data.objHeb)}</pluralLabel>\n`;
-    }
+    xml+=`  <customObjects>\n    <name>${escXML(objApi)}</name>\n`;
+    if(data.objHeb)xml+=`    <label>${escXML(data.objHeb)}</label>\n    <pluralLabel>${escXML(data.objHeb)}</pluralLabel>\n`;
     data.fields.forEach(f=>{
-      xml+=`    <customFields>\n`;
-      xml+=`      <name>${escXML(f.api)}</name>\n`;
-      xml+=`      <label>${escXML(f.heb)}</label>\n`;
-      xml+=`    </customFields>\n`;
+      xml+=`    <customFields>\n      <name>${escXML(f.api)}</name>\n      <label>${escXML(f.heb)}</label>\n    </customFields>\n`;
     });
     xml+=`  </customObjects>\n`;
   });
-  xml+=`</Translations>`;
-  return xml;
+  return xml+'</Translations>';
 }
 
-function buildPackageXML(objects, fields) {
-  const objApis=[...new Set(fields.map(f=>f.objApi))];
-  let xml=`<?xml version="1.0" encoding="UTF-8"?>\n<Package xmlns="http://soap.sforce.com/2006/04/metadata">\n`;
-  if(objects.length){
-    xml+=`  <types>\n`;
-    objects.forEach(o=>xml+=`    <members>${escXML(o.objApi)}</members>\n`);
-    xml+=`    <name>CustomObject</name>\n  </types>\n`;
-  }
-  if(fields.length){
-    xml+=`  <types>\n`;
-    fields.forEach(f=>xml+=`    <members>${escXML(f.objApi)}.${escXML(f.api)}</members>\n`);
-    xml+=`    <name>CustomField</name>\n  </types>\n`;
-  }
+async function buildTranslationZip(fields){
+  const zip=new JSZip();
   const hebFields=fields.filter(f=>f.heb);
-  if(hebFields.length){
-    xml+=`  <types>\n    <members>iw</members>\n    <name>Translations</name>\n  </types>\n`;
-  }
-  xml+=`  <version>59.0</version>\n</Package>`;
-  return xml;
+  if(!hebFields.length)return null;
+  const transXML=buildTranslationXML(hebFields);
+  if(!transXML)return null;
+  const pkgXML=`<?xml version="1.0" encoding="UTF-8"?>\n<Package xmlns="http://soap.sforce.com/2006/04/metadata">\n  <types>\n    <members>iw</members>\n    <name>Translations</name>\n  </types>\n  <version>59.0</version>\n</Package>`;
+  zip.file('translations/iw.translation-meta.xml',transXML);
+  zip.file('package.xml',pkgXML);
+  return await zip.generateAsync({type:'base64'});
 }
 
-// Build a ZIP with translation + package XML, returns base64
-async function buildTranslationZip(fields, objects) {
-  const zip = new JSZip();
-  const hebFields = fields.filter(f=>f.heb);
-  if(!hebFields.length) return null;
-
-  const transXML = buildTranslationXML(hebFields);
-  if(!transXML) return null;
-
-  zip.file('translations/iw.translation-meta.xml', transXML);
-  zip.file('package.xml', buildPackageXML(objects, fields));
-
-  const base64 = await zip.generateAsync({type:'base64'});
-  return base64;
+async function deployTranslationZip(base64Zip,isDry){
+  const xml=`<?xml version="1.0" encoding="UTF-8"?><soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:met="http://soap.sforce.com/2006/04/metadata"><soapenv:Header><met:SessionHeader><met:sessionId>${S.token}</met:sessionId></met:SessionHeader></soapenv:Header><soapenv:Body><met:deploy><met:ZipFile>${base64Zip}</met:ZipFile><met:DeployOptions><met:checkOnly>${isDry}</met:checkOnly><met:rollbackOnError>true</met:rollbackOnError><met:singlePackage>true</met:singlePackage><met:ignoreWarnings>true</met:ignoreWarnings></met:DeployOptions></met:deploy></soapenv:Body></soapenv:Envelope>`;
+  const res=await fetch(`${PROXY}/metadata-deploy`,{method:'POST',headers:{'Content-Type':'text/xml','x-sf-instance':S.instanceUrl,'x-sf-token':S.token},body:xml});
+  return await res.text();
 }
 
-// Deploy translation via Metadata API SOAP
-async function deployTranslationZip(base64Zip, isDry) {
-  const deployXML=`<?xml version="1.0" encoding="UTF-8"?>
-<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:met="http://soap.sforce.com/2006/04/metadata">
-  <soapenv:Header>
-    <met:SessionHeader><met:sessionId>${S.token}</met:sessionId></met:SessionHeader>
-  </soapenv:Header>
-  <soapenv:Body>
-    <met:deploy>
-      <met:ZipFile>${base64Zip}</met:ZipFile>
-      <met:DeployOptions>
-        <met:checkOnly>${isDry}</met:checkOnly>
-        <met:rollbackOnError>true</met:rollbackOnError>
-        <met:singlePackage>true</met:singlePackage>
-        <met:ignoreWarnings>true</met:ignoreWarnings>
-      </met:DeployOptions>
-    </met:deploy>
-  </met:Body>
-</soapenv:Envelope>`;
-
-  const res=await fetch(`${PROXY}/metadata-deploy`,{
-    method:'POST',
-    headers:{'Content-Type':'text/xml','x-sf-instance':S.instanceUrl,'x-sf-token':S.token},
-    body:deployXML
-  });
-  const text=await res.text();
-  return text;
-}
-
-// Poll deploy status
-async function pollDeployStatus(asyncId) {
-  const statusXML=`<?xml version="1.0" encoding="UTF-8"?>
-<soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:met="http://soap.sforce.com/2006/04/metadata">
-  <soapenv:Header>
-    <met:SessionHeader><met:sessionId>${S.token}</met:sessionId></met:SessionHeader>
-  </soapenv:Header>
-  <soapenv:Body>
-    <met:checkDeployStatus>
-      <met:asyncProcessId>${asyncId}</met:asyncProcessId>
-      <met:includeDetails>true</met:includeDetails>
-    </met:checkDeployStatus>
-  </soapenv:Body>
-</soapenv:Envelope>`;
-
+async function pollDeployStatus(asyncId){
+  const xml=`<?xml version="1.0" encoding="UTF-8"?><soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:met="http://soap.sforce.com/2006/04/metadata"><soapenv:Header><met:SessionHeader><met:sessionId>${S.token}</met:sessionId></met:SessionHeader></soapenv:Header><soapenv:Body><met:checkDeployStatus><met:asyncProcessId>${asyncId}</met:asyncProcessId><met:includeDetails>true</met:includeDetails></met:checkDeployStatus></soapenv:Body></soapenv:Envelope>`;
   for(let i=0;i<20;i++){
     await sleep(3000);
-    const res=await fetch(`${PROXY}/metadata-deploy`,{
-      method:'POST',
-      headers:{'Content-Type':'text/xml','x-sf-instance':S.instanceUrl,'x-sf-token':S.token},
-      body:statusXML
-    });
+    const res=await fetch(`${PROXY}/metadata-deploy`,{method:'POST',headers:{'Content-Type':'text/xml','x-sf-instance':S.instanceUrl,'x-sf-token':S.token},body:xml});
     const text=await res.text();
     const done=text.includes('<done>true</done>');
     const success=text.includes('<success>true</success>');
     const status=text.match(/<status>(.*?)<\/status>/)?.[1]||'Unknown';
-    if(done) return {success,status,text};
-    addLog('deploy-log',`[Translation] Polling status: ${status}...`,'trans');
+    if(done)return{success,status,text};
+    addLog('deploy-log',`[Translation] Status: ${status}...`,'trans');
   }
-  return {success:false,status:'Timeout',text:''};
+  return{success:false,status:'Timeout',text:''};
 }
 
-// ── Salesforce API calls ─────────────────────────────────────
-async function sfCall(path, body, method='POST') {
-  const res=await fetch(`${PROXY}/api`,{
-    method:'POST',
-    headers:{'Content-Type':'application/json','x-sf-url':`${S.instanceUrl}${path}`,'x-sf-token':S.token,'x-sf-method':method},
-    body:JSON.stringify(body)
-  });
+async function sfCall(path,body,method='POST'){
+  const res=await fetch(`${PROXY}/api`,{method:'POST',headers:{'Content-Type':'application/json','x-sf-url':`${S.instanceUrl}${path}`,'x-sf-token':S.token,'x-sf-method':method},body:JSON.stringify(body)});
   return{status:res.status,data:await res.json()};
 }
 
-// ── Deploy panel ─────────────────────────────────────────────
-function updateDeployPanel() {
-  const q=S.queue;
+// ── Deploy panel ──────────────────────────────────────────────
+function updateDeployPanel(){
+  const q=S.queue.filter(i=>i.kind==='field');
   document.getElementById('d-count').textContent=q.length;
   const dry=document.getElementById('dry-run').checked;
   document.getElementById('d-mode').textContent=dry?'Dry Run (checkOnly)':'Live Deploy';
@@ -804,151 +978,115 @@ function updateDeployPanel() {
   document.getElementById('d-heb').textContent=q.filter(i=>i.heb).length;
 }
 
-function previewXML(type) {
+function previewXML(type){
   const fields=S.queue.filter(i=>i.kind==='field');
-  const objects=S.queue.filter(i=>i.kind==='object');
   let preview='';
   if(type==='translation'){
-    const xml=buildTranslationXML(fields);
-    preview=xml||'No Hebrew labels found in queue.';
-  } else {
-    if(objects.length){
-      preview=`<!-- Object: ${objects[0].objApi} -->\n<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">\n  <label>${objects[0].objLabel}</label>\n  ...\n</CustomObject>`;
-    } else if(fields.length){
+    preview=buildTranslationXML(fields)||'No Hebrew labels in queue.';
+  }else{
+    if(fields.length){
       const f=fields[0];
-      preview=`<fields>\n  <fullName>${f.api}</fullName>\n  <label>${f.label}</label>\n  <type>${f.type}</type>\n${f.req?'  <required>true</required>\n':''}</fields>`;
-    } else { preview='Queue is empty.'; }
+      preview=`<!-- Example: ${f.objApi}.${f.api} -->\n<fields>\n  <fullName>${f.api}</fullName>\n  <label>${f.label}</label>\n  <type>${f.type}</type>\n${f.req?'  <required>true</required>\n':''}${f.heb?`  <!-- Hebrew: ${f.heb} -->\n`:''}</fields>`;
+    }else{preview='Queue is empty.';}
   }
   const el=document.getElementById('xml-preview');
   el.textContent=preview.length>1500?preview.substring(0,1500)+'\n...(truncated)':preview;
 }
 
-function copyXML() {
+function copyXML(){
   const el=document.getElementById('xml-preview');
   navigator.clipboard.writeText(el.textContent).then(()=>{const t=el.textContent;el.textContent='Copied!';setTimeout(()=>el.textContent=t,1200);});
 }
 
-// ── Main deploy ──────────────────────────────────────────────
-async function runDeploy(dryRun) {
-  if(!S.connected){addLog('deploy-log','Not connected. Go to Connection tab first.','err');switchTab('connect');return;}
-  if(!S.queue.length){addLog('deploy-log','Staging queue is empty.','err');return;}
+// ── Main deploy ───────────────────────────────────────────────
+async function runDeploy(dryRun){
+  if(!S.connected){addLog('deploy-log','Not connected.','err');switchTab('connect');return;}
+  const fields=S.queue.filter(i=>i.kind==='field');
+  if(!fields.length){addLog('deploy-log','Staging queue is empty.','err');return;}
 
   const isDry=dryRun||document.getElementById('dry-run').checked;
   const deployTranslations=document.getElementById('deploy-translations').checked;
+  const hebFields=fields.filter(f=>f.heb);
 
   document.getElementById('btn-dry').disabled=true;
   document.getElementById('btn-deploy').disabled=true;
-
   addLog('deploy-log',`━━━ ${isDry?'DRY RUN':'LIVE DEPLOY'} STARTED ━━━`,'info');
-  addLog('deploy-log',`rollbackOnError: true | checkOnly: ${isDry} | Hebrew: ${deployTranslations}`,'info');
+  addLog('deploy-log',`${fields.length} fields | ${hebFields.length} Hebrew | checkOnly: ${isDry}`,'info');
 
-  const objects=S.queue.filter(i=>i.kind==='object');
-  const allFields=S.queue.filter(i=>i.kind==='field');
-  const hebFields=allFields.filter(f=>f.heb);
-  let ok=0, fail=0;
+  let ok=0,fail=0;
 
-  // ── Step 1: Create Objects ───────────────────────────
-  for(const obj of objects){
-    addLog('deploy-log',`[Step 1] ${isDry?'(dry) ':''}Object: ${obj.objApi}...`,'info');
-    if(isDry){addLog('deploy-log',`[Step 1] ✓ Would create object: ${obj.objApi}`,'ok');ok++;await sleep(100);continue;}
+  // Step 1: Fields
+  for(const f of fields){
+    addLog('deploy-log',`[Field] ${isDry?'(dry) ':''}${f.objApi}.${f.api} (${f.type})...`,'info');
+    if(isDry){addLog('deploy-log',`[Field] ✓ Would create: ${f.api}${f.heb?' + "'+f.heb+'"':''}`,'ok');ok++;await sleep(60);continue;}
     try{
-      const{status,data}=await sfCall('/services/data/v59.0/tooling/sobjects/CustomObject/',{
-        FullName:obj.objApi,
-        Metadata:{label:obj.objLabel,pluralLabel:obj.objLabel+'s',nameField:{label:'Name',type:'Text'},deploymentStatus:'Deployed',sharingModel:'ReadWrite',description:obj.desc||''}
-      });
-      if(status===201||status===200){addLog('deploy-log',`[Step 1] ✓ Object created: ${obj.objApi}`,'ok');ok++;}
+      const{status,data}=await sfCall('/services/data/v59.0/tooling/sobjects/CustomField/',{FullName:`${f.objApi}.${f.api}`,Metadata:buildFieldMeta(f)});
+      if(status===201||status===200){addLog('deploy-log',`[Field] ✓ ${f.api}`,'ok');if(f.heb)addLog('deploy-log',`[Field]   Hebrew queued: "${f.heb}"`,'trans');ok++;}
       else{
         const msg=Array.isArray(data)?data[0]?.message:data.message;
-        if(msg?.toLowerCase().includes('duplicate')){addLog('deploy-log',`[Step 1] ⚠ Already exists: ${obj.objApi}`,'warn');ok++;}
-        else{addLog('deploy-log',`[Step 1] ✕ Failed: ${msg}`,'err');fail++;addLog('deploy-log','Rollback triggered.','err');break;}
+        if(msg?.toLowerCase().includes('duplicate')){addLog('deploy-log',`[Field] ⚠ Already exists: ${f.api}`,'warn');ok++;}
+        else{addLog('deploy-log',`[Field] ✕ ${f.api}: ${msg}`,'err');fail++;addLog('deploy-log','Rollback triggered.','err');break;}
       }
-    }catch(e){addLog('deploy-log',`[Step 1] ✕ ${e.message}`,'err');fail++;break;}
-    await sleep(500);
+    }catch(e){addLog('deploy-log',`[Field] ✕ ${e.message}`,'err');fail++;break;}
+    await sleep(400);
   }
 
-  // ── Step 2: Create Fields ────────────────────────────
-  if(fail===0){
-    addLog('deploy-log',`[Step 2] Creating ${allFields.length} field(s)...`,'info');
-    for(const f of allFields){
-      addLog('deploy-log',`[Step 2] ${isDry?'(dry) ':''}${f.objApi}.${f.api} (${f.type})...`,'info');
-      if(isDry){addLog('deploy-log',`[Step 2] ✓ Would create: ${f.api}${f.heb?' + Hebrew: '+f.heb:''}`,'ok');ok++;await sleep(80);continue;}
-      try{
-        const{status,data}=await sfCall('/services/data/v59.0/tooling/sobjects/CustomField/',{FullName:`${f.objApi}.${f.api}`,Metadata:buildFieldMeta(f)});
-        if(status===201||status===200){
-          addLog('deploy-log',`[Step 2] ✓ Field created: ${f.api}`,'ok');
-          if(f.heb) addLog('deploy-log',`[Step 2]   Hebrew label queued: ${f.heb}`,'trans');
-          ok++;
-        } else {
-          const msg=Array.isArray(data)?data[0]?.message:data.message;
-          if(msg?.toLowerCase().includes('duplicate')){addLog('deploy-log',`[Step 2] ⚠ Already exists: ${f.api}`,'warn');ok++;}
-          else{addLog('deploy-log',`[Step 2] ✕ ${f.api}: ${msg}`,'err');fail++;addLog('deploy-log','Rollback triggered.','err');break;}
-        }
-      }catch(e){addLog('deploy-log',`[Step 2] ✕ ${e.message}`,'err');fail++;break;}
-      await sleep(400);
-    }
-  }
-
-  // ── Step 3: Deploy Hebrew Translations ──────────────
-  if(fail===0 && deployTranslations && hebFields.length){
-    addLog('deploy-log',`[Step 3] Deploying Hebrew translations for ${hebFields.length} field(s)...`,'trans');
+  // Step 2: Translations
+  if(fail===0&&deployTranslations&&hebFields.length){
+    addLog('deploy-log',`[Hebrew] Packaging ${hebFields.length} translation(s)...`,'trans');
     if(isDry){
-      addLog('deploy-log',`[Step 3] (dry) Would deploy translation ZIP with ${hebFields.length} Hebrew labels`,'ok');
-      hebFields.forEach(f=>addLog('deploy-log',`[Step 3]   ${f.objApi}.${f.api} → "${f.heb}"`,'trans'));
-    } else {
+      hebFields.forEach(f=>addLog('deploy-log',`[Hebrew] ✓ Would set "${f.heb}" → ${f.objApi}.${f.api}`,'ok'));
+    }else{
       try{
-        addLog('deploy-log','[Step 3] Building translation ZIP...','trans');
-        const base64Zip=await buildTranslationZip(allFields, objects);
-        if(!base64Zip){addLog('deploy-log','[Step 3] No Hebrew fields to translate.','warn');}
-        else{
-          addLog('deploy-log','[Step 3] Sending to Metadata API...','trans');
-          const deployResult=await deployTranslationZip(base64Zip, false);
-
-          if(deployResult.includes('<id>')){
-            const asyncId=deployResult.match(/<id>(.*?)<\/id>/)?.[1];
-            addLog('deploy-log',`[Step 3] Deploy started (ID: ${asyncId}) — polling...`,'trans');
-            const result=await pollDeployStatus(asyncId);
-            if(result.success){
-              addLog('deploy-log',`[Step 3] ✓ Hebrew translations deployed successfully!`,'ok');
-              hebFields.forEach(f=>addLog('deploy-log',`[Step 3]   ✓ ${f.objApi}.${f.api} → "${f.heb}" (iw)`,'ok'));
-              addLog('deploy-log','[Step 3] Verify in: Setup → Translation Workbench → Translate','trans');
-            } else {
-              addLog('deploy-log',`[Step 3] ⚠ Translation deploy status: ${result.status}`,'warn');
-              addLog('deploy-log','[Step 3] Fields were created. Check Translation Workbench manually.','warn');
-              // Extract error details
-              const errMatch=deployResult.match(/<problem>(.*?)<\/problem>/);
-              if(errMatch) addLog('deploy-log',`[Step 3] Detail: ${errMatch[1]}`,'warn');
+        const b64=await buildTranslationZip(fields);
+        if(b64){
+          const result=await deployTranslationZip(b64,false);
+          if(result.includes('<id>')){
+            const asyncId=result.match(/<id>(.*?)<\/id>/)?.[1];
+            addLog('deploy-log',`[Hebrew] Deploy started (${asyncId}) — polling...`,'trans');
+            const poll=await pollDeployStatus(asyncId);
+            if(poll.success){
+              addLog('deploy-log','[Hebrew] ✓ All Hebrew labels deployed!','ok');
+              hebFields.forEach(f=>addLog('deploy-log',`[Hebrew]   ✓ ${f.objApi}.${f.api} → "${f.heb}" (iw)`,'ok'));
+              addLog('deploy-log','[Hebrew] Verify: Setup → Translate → Language: Hebrew → Component: Custom Field','trans');
+            }else{
+              addLog('deploy-log',`[Hebrew] ⚠ Status: ${poll.status} — fields created, check translations manually.`,'warn');
             }
-          } else if(deployResult.includes('INVALID_SESSION_ID')){
-            addLog('deploy-log','[Step 3] ⚠ Session expired for Metadata API. Fields created, translations need to be re-deployed.','warn');
-          } else {
-            addLog('deploy-log','[Step 3] ⚠ Unexpected response from Metadata API.','warn');
-            addLog('deploy-log','[Step 3] Fields were created successfully — translations may need manual entry.','warn');
+          }else{
+            addLog('deploy-log','[Hebrew] ⚠ Unexpected Metadata API response. Fields created OK.','warn');
           }
         }
-      }catch(e){
-        addLog('deploy-log',`[Step 3] Translation error: ${e.message}`,'warn');
-        addLog('deploy-log','[Step 3] Fields were created. Add Hebrew labels manually in Translation Workbench.','warn');
-      }
+      }catch(e){addLog('deploy-log','[Hebrew] Translation error: '+e.message,'warn');}
     }
-  } else if(fail===0 && hebFields.length===0){
-    addLog('deploy-log','[Step 3] No Hebrew labels found — skipping translation deploy.','info');
   }
 
-  // ── Summary ──────────────────────────────────────────
-  addLog('deploy-log',`━━━ ${isDry?'DRY RUN':'DEPLOY'} COMPLETE — ✓ ${ok} fields | ✕ ${fail} errors ━━━`,fail===0?'ok':'err');
-  if(isDry&&fail===0) addLog('deploy-log','Validation passed. Uncheck Dry Run and click Deploy to apply.','warn');
-  if(!isDry&&fail===0&&hebFields.length) addLog('deploy-log','Check: Setup → Translation Workbench → Translate → select Hebrew → verify fields.','trans');
+  addLog('deploy-log',`━━━ ${isDry?'DRY RUN':'DEPLOY'} COMPLETE — ✓ ${ok} | ✕ ${fail} ━━━`,fail===0?'ok':'err');
+  if(isDry&&fail===0)addLog('deploy-log','Validation passed. Uncheck Dry Run and click Deploy to go live.','warn');
 
   document.getElementById('btn-dry').disabled=false;
   document.getElementById('btn-deploy').disabled=false;
 }
 
-document.getElementById('dry-run').addEventListener('change', updateDeployPanel);
-addLog('conn-log','Ready. Enter credentials and click Connect.','info');
-addLog('conn-log',`Proxy: ${PROXY}`,'info');
-addLog('conn-log','Remember: Wake proxy first → https://sf-proxy-ncj5.onrender.com/health','warn');
-addLog('conn-log','Remember: Enable Hebrew in Setup → Translation Language Settings → Add → Hebrew (iw)','warn');
-updateStats(); refreshQueue();
+// ── Boot ──────────────────────────────────────────────────────
+document.getElementById('dry-run').addEventListener('change',updateDeployPanel);
+
+// Load saved creds and auto-connect
+window.addEventListener('load',async()=>{
+  const hasCreds=loadSavedCreds();
+  if(hasCreds){
+    document.getElementById('auto-conn-msg').style.display='';
+    addLog('conn-log','Saved credentials found — auto-connecting...','info');
+    await connect(false);
+  }else{
+    addLog('conn-log','Ready. Enter your Salesforce credentials to connect.','info');
+    addLog('conn-log',`Proxy: ${PROXY}`,'info');
+    addLog('conn-log','Tip: Wake proxy first → https://sf-proxy-ncj5.onrender.com/health','warn');
+  }
+  // Add first section
+  addObjSection();
+  updateStats();
+  refreshQueue();
+});
 </script>
 </body>
 </html>
