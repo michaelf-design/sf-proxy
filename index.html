@@ -157,11 +157,13 @@ select option { background: var(--surface2); }
 
     <div class="main">
 
+      <!-- CONNECTION TAB -->
       <div class="tab-view active" id="tab-connect">
         <div class="proxy-info">
-          ✓ Proxy: <strong>https://sf-proxy-ncj5.onrender.com</strong><br>
-          All Salesforce API calls route through your Render proxy — no CORS issues.
+          ✓ Proxy: <strong>https://sf-proxy-ncj5.onrender.com</strong> — OAuth password flow (no SOAP)<br>
+          Wake it first: <a href="https://sf-proxy-ncj5.onrender.com/health" target="_blank" style="color:var(--accent);">https://sf-proxy-ncj5.onrender.com/health</a>
         </div>
+
         <div class="panel">
           <div class="panel-head"><span class="panel-title">Salesforce Login</span></div>
           <div class="panel-body">
@@ -178,23 +180,39 @@ select option { background: var(--surface2); }
               <div class="fg"><label>Username</label><input type="email" id="username" placeholder="you@yourorg.com" /></div>
               <div class="fg"><label>Password</label><input type="password" id="password" placeholder="Salesforce password" /></div>
             </div>
-            <div class="fg">
-              <label>Security Token</label>
-              <input type="text" id="sec-token" placeholder="From email — Setup → Reset My Security Token" />
+            <div class="g2">
+              <div class="fg">
+                <label>Security Token</label>
+                <input type="text" id="sec-token" placeholder="From email — Setup → Reset My Security Token" />
+              </div>
+              <div class="fg">
+                <label>Consumer Secret</label>
+                <input type="password" id="client-secret" placeholder="From your Connected App" />
+              </div>
             </div>
-            <div class="hint">Your password and security token are combined automatically. Get your token: Salesforce avatar → Settings → Reset My Security Token → check your email.</div>
+            <div class="fg">
+              <label>Consumer Key (Client ID)</label>
+              <input type="text" id="client-id" value="3MVG9rZjd7MXFdLg9yNdQbidPPjhQhk9WKL49NJU5OyFUiIXeHMf1_fU8A5qBgW_kRZbQec8d.EahWFKQKEHz" />
+            </div>
+            <div class="hint">
+              Password + Security Token are appended automatically (e.g. <code style="color:var(--text);">MyPass123TOKEN</code>).<br>
+              Get your Security Token: Salesforce avatar → Settings → Reset My Security Token → check email.<br>
+              Get your Consumer Secret: Setup → App Manager → SF Metadata Builder → Manage Consumer Details.
+            </div>
             <div style="display:flex;gap:8px;flex-wrap:wrap;">
               <button class="btn btn-accent" id="connect-btn" onclick="connect()">⚡ Connect</button>
               <button class="btn btn-danger" id="disconnect-btn" onclick="disconnect()" style="display:none;">Disconnect</button>
             </div>
           </div>
         </div>
+
         <div class="conn-detail" id="conn-detail">
           <div><span class="k">Org ID: </span><span class="v" id="cd-org"></span></div>
           <div><span class="k">Instance: </span><span class="v" id="cd-instance"></span></div>
           <div><span class="k">User ID: </span><span class="v" id="cd-user"></span></div>
           <div><span class="k">Status: </span><span class="v">Ready to deploy ✓</span></div>
         </div>
+
         <div class="panel">
           <div class="panel-head"><span class="panel-title">Connection Log</span></div>
           <div class="panel-body" style="padding:8px;">
@@ -203,6 +221,7 @@ select option { background: var(--surface2); }
         </div>
       </div>
 
+      <!-- BUILDER TAB -->
       <div class="tab-view" id="tab-builder">
         <div class="g2">
           <div class="panel">
@@ -221,13 +240,14 @@ select option { background: var(--surface2); }
               <div class="upload-zone" id="upload-zone" onclick="document.getElementById('file-in').click()" ondragover="event.preventDefault();this.classList.add('drag')" ondragleave="this.classList.remove('drag')" ondrop="handleDrop(event)">
                 <div style="font-size:22px;">⬆</div>
                 <p>Click or drag Excel / CSV here</p>
-                <p style="font-size:10px;color:var(--text3);margin-top:4px;">Columns: Object API | Field Label | API Name | Type | Required | Hebrew | Default | Help Text</p>
+                <p style="font-size:10px;color:var(--text3);margin-top:4px;">Columns: Object API | Field Label | API Name | Type | Required | Hebrew | Default | Help Text | Picklist Values</p>
               </div>
               <input type="file" id="file-in" accept=".xlsx,.xls,.csv" style="display:none" onchange="handleFile(this.files[0])" />
               <div class="hint">Need the format? <span style="color:var(--accent);cursor:pointer;" onclick="downloadTemplate()">Download template.xlsx</span></div>
             </div>
           </div>
         </div>
+
         <div class="panel">
           <div class="panel-head"><span class="panel-title">Add Field</span></div>
           <div class="panel-body">
@@ -277,6 +297,7 @@ select option { background: var(--surface2); }
         </div>
       </div>
 
+      <!-- QUEUE TAB -->
       <div class="tab-view" id="tab-queue">
         <div class="panel">
           <div class="panel-head">
@@ -302,6 +323,7 @@ select option { background: var(--surface2); }
         </div>
       </div>
 
+      <!-- DEPLOY TAB -->
       <div class="tab-view" id="tab-deploy">
         <div class="panel">
           <div class="panel-head"><span class="panel-title">Deployment Summary</span></div>
@@ -352,294 +374,388 @@ const REL_TYPES = new Set(['Lookup','MasterDetail']);
 let S = { env:'production', connected:false, token:'', instanceUrl:'', orgId:'', userId:'', queue:[] };
 
 function ts() { const n=new Date(); return `${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}:${String(n.getSeconds()).padStart(2,'0')}`; }
+
 function addLog(id, msg, type='info') {
-  const box=document.getElementById(id); if(!box) return;
-  const l=document.createElement('div'); l.className=`ll ${type}`;
-  l.innerHTML=`<span class="ts">${ts()}</span><span class="msg">${msg}</span>`;
-  box.appendChild(l); box.scrollTop=box.scrollHeight;
+  const box = document.getElementById(id); if (!box) return;
+  const l = document.createElement('div'); l.className = `ll ${type}`;
+  l.innerHTML = `<span class="ts">${ts()}</span><span class="msg">${msg}</span>`;
+  box.appendChild(l); box.scrollTop = box.scrollHeight;
 }
+
 function setBadge(status, text) {
-  const b=document.getElementById('conn-badge'); b.className=`conn-badge ${status}`;
-  document.getElementById('bdot').className=`bdot ${status==='connecting'?'pulse':''}`;
-  document.getElementById('badge-text').textContent=text;
+  const b = document.getElementById('conn-badge'); b.className = `conn-badge ${status}`;
+  document.getElementById('bdot').className = `bdot ${status==='connecting'?'pulse':''}`;
+  document.getElementById('badge-text').textContent = text;
 }
+
 function toApi(s) { return s.trim().replace(/\s+/g,'_').replace(/[^a-zA-Z0-9_]/g,''); }
 
 function switchTab(t) {
-  document.querySelectorAll('.tab-view').forEach(e=>e.classList.remove('active'));
-  document.querySelectorAll('.nav-tab').forEach(e=>e.classList.remove('active'));
+  document.querySelectorAll('.tab-view').forEach(e => e.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(e => e.classList.remove('active'));
   document.getElementById('tab-'+t).classList.add('active');
-  ['connect','builder','queue','deploy'].forEach((tab,i)=>{ if(tab===t) document.querySelectorAll('.nav-tab')[i].classList.add('active'); });
-  if(t==='deploy') updateDeployPanel();
+  ['connect','builder','queue','deploy'].forEach((tab,i) => { if(tab===t) document.querySelectorAll('.nav-tab')[i].classList.add('active'); });
+  if (t==='deploy') updateDeployPanel();
 }
 
 function setEnv(env, el) {
-  S.env=env;
-  document.querySelectorAll('.toggle-opt').forEach(o=>o.classList.remove('active'));
+  S.env = env;
+  document.querySelectorAll('.toggle-opt').forEach(o => o.classList.remove('active'));
   el.classList.add('active');
-  document.getElementById('custom-row').style.display=env==='custom'?'':'none';
+  document.getElementById('custom-row').style.display = env==='custom' ? '' : 'none';
 }
 
 function getLoginUrl() {
-  if(S.env==='sandbox') return 'https://test.salesforce.com';
-  if(S.env==='custom') return document.getElementById('custom-url').value.trim().replace(/\/$/,'');
+  if (S.env==='sandbox') return 'https://test.salesforce.com';
+  if (S.env==='custom') return document.getElementById('custom-url').value.trim().replace(/\/$/,'');
   return 'https://login.salesforce.com';
 }
 
 async function connect() {
-  const user=document.getElementById('username').value.trim();
-  const pass=document.getElementById('password').value;
-  const token=document.getElementById('sec-token').value.trim();
-  if(!user||!pass){addLog('conn-log','Username and password are required.','err');return;}
-  const btn=document.getElementById('connect-btn');
-  btn.disabled=true; btn.textContent='Connecting...';
+  const user = document.getElementById('username').value.trim();
+  const pass = document.getElementById('password').value;
+  const secToken = document.getElementById('sec-token').value.trim();
+  const clientId = document.getElementById('client-id').value.trim();
+  const clientSecret = document.getElementById('client-secret').value.trim();
+
+  if (!user || !pass) { addLog('conn-log','Username and password are required.','err'); return; }
+  if (!clientSecret) { addLog('conn-log','Consumer Secret is required. Get it from Setup → App Manager → SF Metadata Builder → Manage Consumer Details.','err'); return; }
+
+  const btn = document.getElementById('connect-btn');
+  btn.disabled = true; btn.textContent = 'Connecting...';
   setBadge('connecting','Connecting...');
   addLog('conn-log',`Connecting via proxy → ${PROXY}`,'info');
   addLog('conn-log',`Environment: ${getLoginUrl()}`,'info');
   addLog('conn-log',`Username: ${user}`,'info');
-  const soap=`<?xml version="1.0" encoding="utf-8"?><soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:urn="urn:partner.soap.sforce.com"><soapenv:Body><urn:login><urn:username>${user}</urn:username><urn:password>${pass}${token}</urn:password></urn:login></soapenv:Body></soapenv:Envelope>`;
+  addLog('conn-log','Using OAuth password flow (no SOAP)...','info');
+
   try {
-    addLog('conn-log','Sending SOAP login request...','info');
-    const res=await fetch(`${PROXY}/soap-login`,{method:'POST',headers:{'Content-Type':'text/xml','SOAPAction':'login','x-sf-env':getLoginUrl()},body:soap});
-    const text=await res.text();
-    addLog('conn-log',`Proxy response: HTTP ${res.status}`,'info');
-    if(res.ok && text.includes('<sessionId>')) {
-      S.token=text.match(/<sessionId>(.*?)<\/sessionId>/)?.[1];
-      const serverUrl=text.match(/<serverUrl>(.*?)<\/serverUrl>/)?.[1];
-      S.instanceUrl=serverUrl?new URL(serverUrl).origin:getLoginUrl();
-      S.orgId=text.match(/<organizationId>(.*?)<\/organizationId>/)?.[1]||'';
-      S.userId=text.match(/<userId>(.*?)<\/userId>/)?.[1]||'';
-      S.connected=true;
-      setBadge('connected',`Connected: ${S.instanceUrl.replace('https://','').split('.')[0]}`);
-      addLog('conn-log','✓ Login successful!','ok');
+    const res = await fetch(`${PROXY}/soap-login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-sf-env': getLoginUrl() },
+      body: JSON.stringify({
+        username: user,
+        password: pass + secToken,
+        clientId: clientId,
+        clientSecret: clientSecret
+      })
+    });
+
+    const data = await res.json();
+
+    if (data.success && data.sessionId) {
+      S.token = data.sessionId;
+      S.instanceUrl = data.instanceUrl;
+      S.orgId = data.orgId || '';
+      S.userId = data.userId || '';
+      S.connected = true;
+
+      const orgName = S.instanceUrl.replace('https://','').split('.')[0];
+      setBadge('connected', `Connected: ${orgName}`);
+      addLog('conn-log','✓ OAuth login successful!','ok');
       addLog('conn-log',`Instance: ${S.instanceUrl}`,'ok');
       addLog('conn-log',`Org ID: ${S.orgId}`,'ok');
+      addLog('conn-log',`User ID: ${S.userId}`,'ok');
       addLog('conn-log','Ready to deploy objects and fields.','ok');
-      document.getElementById('conn-detail').style.display='';
-      document.getElementById('cd-org').textContent=S.orgId;
-      document.getElementById('cd-instance').textContent=S.instanceUrl;
-      document.getElementById('cd-user').textContent=S.userId;
-      document.getElementById('disconnect-btn').style.display='';
-    } else if(text.includes('<faultstring>')) {
-      const fault=text.match(/<faultstring>(.*?)<\/faultstring>/)?.[1];
-      setBadge('error','Login failed');
-      addLog('conn-log',`✕ Salesforce error: ${fault}`,'err');
-      if(fault?.includes('INVALID_LOGIN')) addLog('conn-log','Check username, password and security token.','warn');
-      if(fault?.includes('API_DISABLED')) addLog('conn-log','Enable API access: Setup → Profiles → your profile → API Enabled.','warn');
+
+      document.getElementById('conn-detail').style.display = '';
+      document.getElementById('cd-org').textContent = S.orgId;
+      document.getElementById('cd-instance').textContent = S.instanceUrl;
+      document.getElementById('cd-user').textContent = S.userId;
+      document.getElementById('disconnect-btn').style.display = '';
+
     } else {
-      setBadge('error','Unexpected response');
-      addLog('conn-log',`Unexpected: ${text.substring(0,200)}`,'err');
+      setBadge('error','Login failed');
+      const errMsg = data.error || data.message || JSON.stringify(data);
+      addLog('conn-log',`✕ Error: ${errMsg}`,'err');
+      if (errMsg.includes('invalid_client')) addLog('conn-log','Check your Consumer Key and Consumer Secret.','warn');
+      if (errMsg.includes('invalid_grant')) addLog('conn-log','Check your username, password and security token.','warn');
+      if (errMsg.includes('username-password')) addLog('conn-log','Enable OAuth Username-Password Flow: Setup → OAuth and OpenID Connect Settings.','warn');
     }
   } catch(e) {
-    setBadge('error','Error');
-    addLog('conn-log',`Error: ${e.message}`,'err');
-    addLog('conn-log','Make sure proxy is awake: open https://sf-proxy-ncj5.onrender.com/health in your browser first.','warn');
+    setBadge('error','Proxy error');
+    addLog('conn-log',`Proxy error: ${e.message}`,'err');
+    addLog('conn-log','Wake the proxy first: open https://sf-proxy-ncj5.onrender.com/health in your browser.','warn');
   }
-  btn.disabled=false; btn.textContent='⚡ Connect';
+
+  btn.disabled = false; btn.textContent = '⚡ Connect';
 }
 
 function disconnect() {
-  S={...S,connected:false,token:'',instanceUrl:'',orgId:'',userId:''};
+  S = {...S, connected:false, token:'', instanceUrl:'', orgId:'', userId:''};
   setBadge('disconnected','Not connected');
-  document.getElementById('conn-detail').style.display='none';
-  document.getElementById('disconnect-btn').style.display='none';
-  addLog('conn-log','Disconnected.','warn');
+  document.getElementById('conn-detail').style.display = 'none';
+  document.getElementById('disconnect-btn').style.display = 'none';
+  addLog('conn-log','Disconnected. You can now connect to a different org.','warn');
 }
 
-function autoObjApi() { const a=document.getElementById('b-obj-api'); if(!a.dataset.m) a.value=toApi(document.getElementById('b-obj-label').value)+(document.getElementById('b-obj-label').value.trim()?'__c':''); }
-document.getElementById('b-obj-api').addEventListener('input',function(){this.dataset.m='1';});
-function autoFieldApi() { const a=document.getElementById('b-fapi'); if(!a.dataset.m) a.value=toApi(document.getElementById('b-flabel').value)+(document.getElementById('b-flabel').value.trim()?'__c':''); }
-document.getElementById('b-fapi').addEventListener('input',function(){this.dataset.m='1';});
+function autoObjApi() {
+  const a = document.getElementById('b-obj-api');
+  if (!a.dataset.m) a.value = toApi(document.getElementById('b-obj-label').value) + (document.getElementById('b-obj-label').value.trim() ? '__c' : '');
+}
+document.getElementById('b-obj-api').addEventListener('input', function(){ this.dataset.m = '1'; });
+
+function autoFieldApi() {
+  const a = document.getElementById('b-fapi');
+  if (!a.dataset.m) a.value = toApi(document.getElementById('b-flabel').value) + (document.getElementById('b-flabel').value.trim() ? '__c' : '');
+}
+document.getElementById('b-fapi').addEventListener('input', function(){ this.dataset.m = '1'; });
+
 function onTypeChange() {
-  const t=document.getElementById('b-ftype').value;
-  document.getElementById('pl-extra').style.display=PL_TYPES.has(t)?'':'none';
-  document.getElementById('rel-extra').style.display=REL_TYPES.has(t)?'':'none';
+  const t = document.getElementById('b-ftype').value;
+  document.getElementById('pl-extra').style.display = PL_TYPES.has(t) ? '' : 'none';
+  document.getElementById('rel-extra').style.display = REL_TYPES.has(t) ? '' : 'none';
 }
 
 function stageObject() {
-  const lbl=document.getElementById('b-obj-label').value.trim();
-  const api=document.getElementById('b-obj-api').value.trim();
-  if(!lbl||!api){alert('Object label and API name required.');return;}
-  S.queue.push({kind:'object',objLabel:lbl,objApi:api,heb:document.getElementById('b-obj-heb').value.trim(),desc:document.getElementById('b-obj-desc').value.trim()});
-  refreshQueue();updateStats();
-  ['b-obj-label','b-obj-api','b-obj-heb','b-obj-desc'].forEach(id=>{const e=document.getElementById(id);if(e){e.value='';if(e.dataset)delete e.dataset.m;}});
+  const lbl = document.getElementById('b-obj-label').value.trim();
+  const api = document.getElementById('b-obj-api').value.trim();
+  if (!lbl || !api) { alert('Object label and API name required.'); return; }
+  S.queue.push({ kind:'object', objLabel:lbl, objApi:api, heb:document.getElementById('b-obj-heb').value.trim(), desc:document.getElementById('b-obj-desc').value.trim() });
+  refreshQueue(); updateStats();
+  ['b-obj-label','b-obj-api','b-obj-heb','b-obj-desc'].forEach(id => { const e=document.getElementById(id); if(e){ e.value=''; if(e.dataset) delete e.dataset.m; } });
+  addLog('conn-log',`Staged object: ${api}`,'ok');
 }
 
 function stageField() {
-  const objRef=document.getElementById('b-obj-ref').value.trim();
-  const lbl=document.getElementById('b-flabel').value.trim();
-  const api=document.getElementById('b-fapi').value.trim();
-  const type=document.getElementById('b-ftype').value;
-  if(!objRef||!lbl||!api){alert('Object API, field label and API name required.');return;}
-  S.queue.push({kind:'field',objApi:objRef,label:lbl,api,type,
-    heb:document.getElementById('b-fheb').value.trim(),
-    req:document.getElementById('b-freq').checked,
-    defaultVal:document.getElementById('b-fdefault').value.trim(),
-    helpText:document.getElementById('b-fhelp').value.trim(),
-    picklistValues:PL_TYPES.has(type)?document.getElementById('b-plvals').value.split(',').map(v=>v.trim()).filter(Boolean):[],
-    relObject:document.getElementById('b-relobj').value.trim(),
-    relType:document.getElementById('b-reltype').value});
-  refreshQueue();updateStats();
-  ['b-flabel','b-fapi','b-fheb','b-fdefault','b-fhelp','b-plvals','b-relobj'].forEach(id=>{const e=document.getElementById(id);if(e){e.value='';if(e.dataset)delete e.dataset.m;}});
-  document.getElementById('b-freq').checked=false;
+  const objRef = document.getElementById('b-obj-ref').value.trim();
+  const lbl = document.getElementById('b-flabel').value.trim();
+  const api = document.getElementById('b-fapi').value.trim();
+  const type = document.getElementById('b-ftype').value;
+  if (!objRef || !lbl || !api) { alert('Object API, field label and API name required.'); return; }
+  S.queue.push({
+    kind:'field', objApi:objRef, label:lbl, api, type,
+    heb: document.getElementById('b-fheb').value.trim(),
+    req: document.getElementById('b-freq').checked,
+    defaultVal: document.getElementById('b-fdefault').value.trim(),
+    helpText: document.getElementById('b-fhelp').value.trim(),
+    picklistValues: PL_TYPES.has(type) ? document.getElementById('b-plvals').value.split(',').map(v=>v.trim()).filter(Boolean) : [],
+    relObject: document.getElementById('b-relobj').value.trim(),
+    relType: document.getElementById('b-reltype').value
+  });
+  refreshQueue(); updateStats();
+  ['b-flabel','b-fapi','b-fheb','b-fdefault','b-fhelp','b-plvals','b-relobj'].forEach(id => { const e=document.getElementById(id); if(e){ e.value=''; if(e.dataset) delete e.dataset.m; } });
+  document.getElementById('b-freq').checked = false;
 }
 
 function updateStats() {
-  const q=S.queue;
-  document.getElementById('s-total').textContent=q.length;
-  document.getElementById('s-objs').textContent=q.filter(i=>i.kind==='object').length;
-  document.getElementById('s-fields').textContent=q.filter(i=>i.kind==='field').length;
-  document.getElementById('s-req').textContent=q.filter(i=>i.kind==='field'&&i.req).length;
+  const q = S.queue;
+  document.getElementById('s-total').textContent = q.length;
+  document.getElementById('s-objs').textContent = q.filter(i=>i.kind==='object').length;
+  document.getElementById('s-fields').textContent = q.filter(i=>i.kind==='field').length;
+  document.getElementById('s-req').textContent = q.filter(i=>i.kind==='field'&&i.req).length;
 }
 
 function refreshQueue() {
-  const tbody=document.getElementById('queue-body');
-  const empty=document.getElementById('empty-q');
-  if(!S.queue.length){tbody.innerHTML='';empty.style.display='';return;}
-  empty.style.display='none';
-  tbody.innerHTML=S.queue.map((item,i)=>{
-    if(item.kind==='object') return `<tr><td><span class="tag tag-accent">Object</span></td><td><strong>${item.objApi}</strong></td><td>${item.objLabel}</td><td style="color:var(--text3);">${item.objApi}</td><td>—</td><td dir="rtl">${item.heb||'—'}</td><td>—</td><td style="font-size:10px;color:var(--text3);">${item.desc||''}</td><td><button class="btn btn-ghost btn-sm" onclick="removeItem(${i})">✕</button></td></tr>`;
-    const det=item.picklistValues?.length?`${item.picklistValues.length} vals`:(item.relObject?`${item.relType}→${item.relObject}`:'');
+  const tbody = document.getElementById('queue-body');
+  const empty = document.getElementById('empty-q');
+  if (!S.queue.length) { tbody.innerHTML=''; empty.style.display=''; return; }
+  empty.style.display = 'none';
+  tbody.innerHTML = S.queue.map((item,i) => {
+    if (item.kind==='object') return `<tr><td><span class="tag tag-accent">Object</span></td><td><strong>${item.objApi}</strong></td><td>${item.objLabel}</td><td style="color:var(--text3);">${item.objApi}</td><td>—</td><td dir="rtl">${item.heb||'—'}</td><td>—</td><td style="font-size:10px;color:var(--text3);">${item.desc||''}</td><td><button class="btn btn-ghost btn-sm" onclick="removeItem(${i})">✕</button></td></tr>`;
+    const det = item.picklistValues?.length ? `${item.picklistValues.length} vals` : (item.relObject ? `${item.relType}→${item.relObject}` : '');
     return `<tr><td><span class="tag tag-gray">Field</span></td><td style="color:var(--text3);">${item.objApi}</td><td>${item.label}</td><td style="font-family:var(--font-mono);font-size:11px;color:var(--accent);">${item.api}</td><td><span class="tag tag-gray">${item.type}</span></td><td dir="rtl">${item.heb||'—'}</td><td>${item.req?'<span class="tag tag-warn">Yes</span>':'—'}</td><td style="font-size:10px;color:var(--text3);">${det}</td><td><button class="btn btn-ghost btn-sm" onclick="removeItem(${i})">✕</button></td></tr>`;
   }).join('');
 }
 
-function removeItem(i){S.queue.splice(i,1);refreshQueue();updateStats();}
-function clearQueue(){if(confirm('Clear all staged items?')){S.queue=[];refreshQueue();updateStats();}}
-function exportQueue(){const b=new Blob([JSON.stringify(S.queue,null,2)],{type:'application/json'});const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='sf-queue.json';a.click();}
-function loadExample(){document.getElementById('b-obj-ref').value='Service_Request__c';document.getElementById('b-flabel').value='Status';document.getElementById('b-fapi').value='Status__c';document.getElementById('b-fapi').dataset.m='1';document.getElementById('b-ftype').value='Picklist';onTypeChange();document.getElementById('b-plvals').value='New, In Progress, Resolved, Closed';document.getElementById('b-fheb').value='סטטוס';document.getElementById('b-freq').checked=true;}
+function removeItem(i) { S.queue.splice(i,1); refreshQueue(); updateStats(); }
+function clearQueue() { if(confirm('Clear all staged items?')){ S.queue=[]; refreshQueue(); updateStats(); } }
+function exportQueue() { const b=new Blob([JSON.stringify(S.queue,null,2)],{type:'application/json'}); const a=document.createElement('a'); a.href=URL.createObjectURL(b); a.download='sf-queue.json'; a.click(); }
 
-function handleFile(file){
-  if(!file)return;
-  const r=new FileReader();
-  r.onload=e=>{
-    try{
-      const wb=XLSX.read(e.target.result,{type:'binary'});
-      const ws=wb.Sheets[wb.SheetNames[0]];
-      const rows=XLSX.utils.sheet_to_json(ws,{defval:''});
-      let added=0;
-      rows.forEach(r=>{
-        const lbl=String(r['Field Label']||r['Label']||'').trim();
-        const api=String(r['API Name']||'').trim();
-        if(!lbl&&!api)return;
-        S.queue.push({kind:'field',objApi:String(r['Object API']||'').trim(),label:lbl,api:api||toApi(lbl)+'__c',type:String(r['Type']||'Text').trim(),heb:String(r['Hebrew']||r['Hebrew Label']||'').trim(),req:['yes','true','1'].includes(String(r['Required']||'').toLowerCase()),defaultVal:String(r['Default Value']||'').trim(),helpText:String(r['Help Text']||'').trim(),picklistValues:String(r['Picklist Values']||'').split(',').map(v=>v.trim()).filter(Boolean),relObject:'',relType:'Lookup'});
+function loadExample() {
+  document.getElementById('b-obj-ref').value = 'Service_Request__c';
+  document.getElementById('b-flabel').value = 'Status';
+  document.getElementById('b-fapi').value = 'Status__c'; document.getElementById('b-fapi').dataset.m = '1';
+  document.getElementById('b-ftype').value = 'Picklist'; onTypeChange();
+  document.getElementById('b-plvals').value = 'New, In Progress, Resolved, Closed';
+  document.getElementById('b-fheb').value = 'סטטוס';
+  document.getElementById('b-freq').checked = true;
+}
+
+function handleFile(file) {
+  if (!file) return;
+  const r = new FileReader();
+  r.onload = e => {
+    try {
+      const wb = XLSX.read(e.target.result, {type:'binary'});
+      const ws = wb.Sheets[wb.SheetNames[0]];
+      const rows = XLSX.utils.sheet_to_json(ws, {defval:''});
+      let added = 0;
+      rows.forEach(r => {
+        const lbl = String(r['Field Label']||r['Label']||'').trim();
+        const api = String(r['API Name']||'').trim();
+        if (!lbl && !api) return;
+        S.queue.push({ kind:'field', objApi:String(r['Object API']||'').trim(), label:lbl, api:api||toApi(lbl)+'__c',
+          type:String(r['Type']||'Text').trim(), heb:String(r['Hebrew']||r['Hebrew Label']||'').trim(),
+          req:['yes','true','1'].includes(String(r['Required']||'').toLowerCase()),
+          defaultVal:String(r['Default Value']||'').trim(), helpText:String(r['Help Text']||'').trim(),
+          picklistValues:String(r['Picklist Values']||'').split(',').map(v=>v.trim()).filter(Boolean),
+          relObject:'', relType:'Lookup' });
         added++;
       });
-      refreshQueue();updateStats();
+      refreshQueue(); updateStats();
       addLog('conn-log',`Imported ${added} rows from ${file.name}`,'ok');
       switchTab('queue');
-    }catch(err){addLog('conn-log',`Parse error: ${err.message}`,'err');}
+    } catch(err) { addLog('conn-log',`Parse error: ${err.message}`,'err'); }
   };
   r.readAsBinaryString(file);
 }
-function handleDrop(e){e.preventDefault();document.getElementById('upload-zone').classList.remove('drag');handleFile(e.dataTransfer.files[0]);}
-function downloadTemplate(){
-  const ws=XLSX.utils.aoa_to_sheet([['Object API','Field Label','API Name','Type','Required','Hebrew Label','Default Value','Help Text','Picklist Values'],['Work_Order__c','Status','Status__c','Picklist','Yes','סטטוס','','','New,In Progress,Done']]);
-  const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,'Fields');XLSX.writeFile(wb,'sf-template.xlsx');
+
+function handleDrop(e) { e.preventDefault(); document.getElementById('upload-zone').classList.remove('drag'); handleFile(e.dataTransfer.files[0]); }
+
+function downloadTemplate() {
+  const ws = XLSX.utils.aoa_to_sheet([
+    ['Object API','Field Label','API Name','Type','Required','Hebrew Label','Default Value','Help Text','Picklist Values'],
+    ['Work_Order__c','Status','Status__c','Picklist','Yes','סטטוס','','','New,In Progress,Done'],
+    ['Work_Order__c','Priority','Priority__c','Picklist','No','עדיפות','','','Low,Medium,High'],
+    ['Work_Order__c','Notes','Notes__c','LongTextArea','No','הערות','','','']
+  ]);
+  const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, 'Fields');
+  XLSX.writeFile(wb, 'sf-template.xlsx');
 }
 
-function buildFieldMeta(f){
-  const m={label:f.label,required:f.req&&f.type!=='Checkbox',description:f.helpText||''};
-  if(f.type==='Text'){m.type='Text';m.length=255;}
-  else if(f.type==='LongTextArea'){m.type='LongTextArea';m.length=32768;m.visibleLines=5;}
-  else if(f.type==='TextArea'){m.type='TextArea';}
-  else if(f.type==='Number'){m.type='Number';m.precision=18;m.scale=0;}
-  else if(f.type==='Currency'||f.type==='Percent'){m.type=f.type;m.precision=18;m.scale=2;}
-  else if(f.type==='Checkbox'){m.type='Checkbox';m.defaultValue=false;m.required=false;}
-  else if(f.type==='Date'){m.type='Date';}
-  else if(f.type==='DateTime'){m.type='DateTime';}
-  else if(f.type==='Email'){m.type='Email';}
-  else if(f.type==='Phone'){m.type='Phone';}
-  else if(f.type==='Url'){m.type='Url';}
-  else if(f.type==='AutoNumber'){m.type='AutoNumber';m.startingNumber=1;m.displayFormat='AN-{0000}';}
-  else if(PL_TYPES.has(f.type)){m.type=f.type;if(f.picklistValues?.length)m.valueSet={valueSetDefinition:{value:f.picklistValues.map(v=>({fullName:v,label:v,default:false}))}};if(f.type==='MultiselectPicklist')m.visibleLines=4;}
-  else if(REL_TYPES.has(f.type)){m.type=f.type;m.referenceTo=f.relObject||'Account';m.relationshipName=(f.relObject||'Account').replace('__c','');if(f.type==='MasterDetail')m.relationshipOrder=0;}
-  else{m.type=f.type;}
+function buildFieldMeta(f) {
+  const m = { label:f.label, required:f.req&&f.type!=='Checkbox', description:f.helpText||'' };
+  if (f.type==='Text') { m.type='Text'; m.length=255; }
+  else if (f.type==='LongTextArea') { m.type='LongTextArea'; m.length=32768; m.visibleLines=5; }
+  else if (f.type==='TextArea') { m.type='TextArea'; }
+  else if (f.type==='Number') { m.type='Number'; m.precision=18; m.scale=0; }
+  else if (f.type==='Currency'||f.type==='Percent') { m.type=f.type; m.precision=18; m.scale=2; }
+  else if (f.type==='Checkbox') { m.type='Checkbox'; m.defaultValue=false; m.required=false; }
+  else if (f.type==='Date') { m.type='Date'; }
+  else if (f.type==='DateTime') { m.type='DateTime'; }
+  else if (f.type==='Email') { m.type='Email'; }
+  else if (f.type==='Phone') { m.type='Phone'; }
+  else if (f.type==='Url') { m.type='Url'; }
+  else if (f.type==='AutoNumber') { m.type='AutoNumber'; m.startingNumber=1; m.displayFormat='AN-{0000}'; }
+  else if (PL_TYPES.has(f.type)) {
+    m.type = f.type;
+    if (f.picklistValues?.length) m.valueSet = { valueSetDefinition: { value: f.picklistValues.map(v=>({fullName:v,label:v,default:false})) } };
+    if (f.type==='MultiselectPicklist') m.visibleLines = 4;
+  } else if (REL_TYPES.has(f.type)) {
+    m.type = f.type; m.referenceTo = f.relObject||'Account';
+    m.relationshipName = (f.relObject||'Account').replace('__c','');
+    if (f.type==='MasterDetail') m.relationshipOrder = 0;
+  } else { m.type = f.type; }
   return m;
 }
 
-async function sfCall(path,body,method='POST'){
-  const res=await fetch(`${PROXY}/api`,{method:'POST',headers:{'Content-Type':'application/json','x-sf-url':`${S.instanceUrl}${path}`,'x-sf-token':S.token,'x-sf-method':method},body:JSON.stringify(body)});
-  return{status:res.status,data:await res.json()};
-}
-
-function updateDeployPanel(){
-  document.getElementById('d-count').textContent=S.queue.length;
-  const dry=document.getElementById('dry-run').checked;
-  document.getElementById('d-mode').textContent=dry?'Dry Run (checkOnly)':'Live Deploy';
-  document.getElementById('d-mode').style.color=dry?'var(--warn)':'var(--success)';
-  document.getElementById('d-profiles').textContent=`${Array.from(document.querySelectorAll('#p1,#p2,#p3,#p4,#p5')).filter(p=>p.checked).length} selected`;
-}
-
-function buildObjXML(obj,fields){
-  let x=`<?xml version="1.0" encoding="UTF-8"?>\n<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">\n  <label>${obj.objLabel}</label>\n  <pluralLabel>${obj.objLabel}s</pluralLabel>\n`;
-  if(obj.desc)x+=`  <description>${obj.desc}</description>\n`;
-  x+=`  <nameField>\n    <label>Name</label>\n    <type>Text</type>\n  </nameField>\n  <deploymentStatus>Deployed</deploymentStatus>\n  <sharingModel>ReadWrite</sharingModel>\n\n`;
-  fields.forEach(f=>{
-    x+=`  <fields>\n    <fullName>${f.api}</fullName>\n    <label>${f.label}</label>\n`;
-    if(f.req&&f.type!=='Checkbox')x+=`    <required>true</required>\n`;
-    if(REL_TYPES.has(f.type)){x+=`    <type>${f.type}</type>\n    <referenceTo>${f.relObject||'Account'}</referenceTo>\n    <relationshipName>${(f.relObject||'Account').replace('__c','')}</relationshipName>\n`;if(f.type==='MasterDetail')x+=`    <relationshipOrder>0</relationshipOrder>\n`;}
-    else if(PL_TYPES.has(f.type)){x+=`    <type>${f.type}</type>\n`;if(f.picklistValues?.length){x+=`    <valueSet>\n      <valueSetDefinition>\n`;f.picklistValues.forEach(v=>x+=`        <value><fullName>${v}</fullName><label>${v}</label><default>false</default></value>\n`);x+=`      </valueSetDefinition>\n    </valueSet>\n`;}if(f.type==='MultiselectPicklist')x+=`    <visibleLines>4</visibleLines>\n`;}
-    else{x+=`    <type>${f.type}</type>\n`;if(f.type==='Text')x+=`    <length>255</length>\n`;if(f.type==='LongTextArea')x+=`    <length>32768</length>\n    <visibleLines>5</visibleLines>\n`;}
-    x+=`  </fields>\n`;
+async function sfCall(path, body, method='POST') {
+  const res = await fetch(`${PROXY}/api`, {
+    method: 'POST',
+    headers: { 'Content-Type':'application/json', 'x-sf-url':`${S.instanceUrl}${path}`, 'x-sf-token':S.token, 'x-sf-method':method },
+    body: JSON.stringify(body)
   });
-  return x+'</CustomObject>';
+  return { status:res.status, data:await res.json() };
 }
 
-function previewXML(){
-  if(!S.queue.length){document.getElementById('xml-preview').textContent='Queue is empty.';return;}
-  const objs=S.queue.filter(i=>i.kind==='object');
-  const fields=S.queue.filter(i=>i.kind==='field');
-  let preview='';
-  if(objs.length){const o=objs[0];const xml=buildObjXML(o,fields.filter(f=>f.objApi===o.objApi));preview=xml.length>1200?xml.substring(0,1200)+'\n... (truncated)':xml;}
-  else if(fields.length){preview=fields.slice(0,2).map(f=>`<fields>\n  <fullName>${f.api}</fullName>\n  <label>${f.label}</label>\n  <type>${f.type}</type>\n</fields>`).join('\n');}
-  document.getElementById('xml-preview').textContent=preview;
+function updateDeployPanel() {
+  document.getElementById('d-count').textContent = S.queue.length;
+  const dry = document.getElementById('dry-run').checked;
+  document.getElementById('d-mode').textContent = dry ? 'Dry Run (checkOnly)' : 'Live Deploy';
+  document.getElementById('d-mode').style.color = dry ? 'var(--warn)' : 'var(--success)';
+  document.getElementById('d-profiles').textContent = `${Array.from(document.querySelectorAll('#p1,#p2,#p3,#p4,#p5')).filter(p=>p.checked).length} selected`;
 }
-function copyXML(){const el=document.getElementById('xml-preview');navigator.clipboard.writeText(el.textContent).then(()=>{const t=el.textContent;el.textContent='Copied!';setTimeout(()=>el.textContent=t,1200);});}
 
-async function runDeploy(dryRun){
-  if(!S.connected){addLog('deploy-log','Not connected. Go to Connection tab first.','err');switchTab('connect');return;}
-  if(!S.queue.length){addLog('deploy-log','Staging queue is empty.','err');return;}
-  const isDry=dryRun||document.getElementById('dry-run').checked;
-  document.getElementById('btn-dry').disabled=true;
-  document.getElementById('btn-deploy').disabled=true;
+function buildObjXML(obj, fields) {
+  let x = `<?xml version="1.0" encoding="UTF-8"?>\n<CustomObject xmlns="http://soap.sforce.com/2006/04/metadata">\n`;
+  x += `  <label>${obj.objLabel}</label>\n  <pluralLabel>${obj.objLabel}s</pluralLabel>\n`;
+  if (obj.desc) x += `  <description>${obj.desc}</description>\n`;
+  x += `  <nameField>\n    <label>Name</label>\n    <type>Text</type>\n  </nameField>\n`;
+  x += `  <deploymentStatus>Deployed</deploymentStatus>\n  <sharingModel>ReadWrite</sharingModel>\n\n`;
+  fields.forEach(f => {
+    x += `  <fields>\n    <fullName>${f.api}</fullName>\n    <label>${f.label}</label>\n`;
+    if (f.req && f.type!=='Checkbox') x += `    <required>true</required>\n`;
+    if (REL_TYPES.has(f.type)) {
+      x += `    <type>${f.type}</type>\n    <referenceTo>${f.relObject||'Account'}</referenceTo>\n    <relationshipName>${(f.relObject||'Account').replace('__c','')}</relationshipName>\n`;
+      if (f.type==='MasterDetail') x += `    <relationshipOrder>0</relationshipOrder>\n`;
+    } else if (PL_TYPES.has(f.type)) {
+      x += `    <type>${f.type}</type>\n`;
+      if (f.picklistValues?.length) { x += `    <valueSet>\n      <valueSetDefinition>\n`; f.picklistValues.forEach(v => x += `        <value><fullName>${v}</fullName><label>${v}</label><default>false</default></value>\n`); x += `      </valueSetDefinition>\n    </valueSet>\n`; }
+      if (f.type==='MultiselectPicklist') x += `    <visibleLines>4</visibleLines>\n`;
+    } else {
+      x += `    <type>${f.type}</type>\n`;
+      if (f.type==='Text') x += `    <length>255</length>\n`;
+      if (f.type==='LongTextArea') x += `    <length>32768</length>\n    <visibleLines>5</visibleLines>\n`;
+    }
+    x += `  </fields>\n`;
+  });
+  return x + '</CustomObject>';
+}
+
+function previewXML() {
+  if (!S.queue.length) { document.getElementById('xml-preview').textContent='Queue is empty.'; return; }
+  const objs = S.queue.filter(i=>i.kind==='object');
+  const fields = S.queue.filter(i=>i.kind==='field');
+  let preview = '';
+  if (objs.length) { const o=objs[0]; const xml=buildObjXML(o,fields.filter(f=>f.objApi===o.objApi)); preview=xml.length>1200?xml.substring(0,1200)+'\n...(truncated)':xml; }
+  else if (fields.length) { preview = fields.slice(0,2).map(f=>`<fields>\n  <fullName>${f.api}</fullName>\n  <label>${f.label}</label>\n  <type>${f.type}</type>\n</fields>`).join('\n'); }
+  document.getElementById('xml-preview').textContent = preview;
+}
+
+function copyXML() {
+  const el = document.getElementById('xml-preview');
+  navigator.clipboard.writeText(el.textContent).then(() => { const t=el.textContent; el.textContent='Copied!'; setTimeout(()=>el.textContent=t,1200); });
+}
+
+async function runDeploy(dryRun) {
+  if (!S.connected) { addLog('deploy-log','Not connected. Go to Connection tab first.','err'); switchTab('connect'); return; }
+  if (!S.queue.length) { addLog('deploy-log','Staging queue is empty.','err'); return; }
+  const isDry = dryRun || document.getElementById('dry-run').checked;
+  document.getElementById('btn-dry').disabled = true;
+  document.getElementById('btn-deploy').disabled = true;
   addLog('deploy-log',`━━━ ${isDry?'DRY RUN':'LIVE DEPLOY'} STARTED ━━━`,'info');
   addLog('deploy-log',`rollbackOnError: true | checkOnly: ${isDry}`,'info');
-  const objects=S.queue.filter(i=>i.kind==='object');
-  const allFields=S.queue.filter(i=>i.kind==='field');
-  let ok=0,fail=0;
-  for(const obj of objects){
+
+  const objects = S.queue.filter(i=>i.kind==='object');
+  const allFields = S.queue.filter(i=>i.kind==='field');
+  let ok=0, fail=0;
+
+  for (const obj of objects) {
     addLog('deploy-log',`[Object] ${isDry?'(dry) ':''}${obj.objApi}...`,'info');
-    if(isDry){addLog('deploy-log',`[Object] ✓ Would create: ${obj.objApi}`,'ok');ok++;await new Promise(r=>setTimeout(r,100));continue;}
-    try{
-      const{status,data}=await sfCall('/services/data/v59.0/tooling/sobjects/CustomObject/',{FullName:obj.objApi,Metadata:{label:obj.objLabel,pluralLabel:obj.objLabel+'s',nameField:{label:'Name',type:'Text'},deploymentStatus:'Deployed',sharingModel:'ReadWrite',description:obj.desc||''}});
-      if(status===201||status===200){addLog('deploy-log',`[Object] ✓ Created: ${obj.objApi}`,'ok');ok++;}
-      else{const msg=Array.isArray(data)?data[0]?.message:data.message;if(msg?.toLowerCase().includes('duplicate')){addLog('deploy-log',`[Object] ⚠ Already exists: ${obj.objApi}`,'warn');ok++;}else{addLog('deploy-log',`[Object] ✕ Failed: ${msg}`,'err');fail++;addLog('deploy-log','Rollback triggered — stopping.','err');break;}}
-    }catch(e){addLog('deploy-log',`[Object] ✕ ${e.message}`,'err');fail++;break;}
+    if (isDry) { addLog('deploy-log',`[Object] ✓ Would create: ${obj.objApi}`,'ok'); ok++; await new Promise(r=>setTimeout(r,100)); continue; }
+    try {
+      const {status,data} = await sfCall('/services/data/v59.0/tooling/sobjects/CustomObject/', {
+        FullName: obj.objApi,
+        Metadata: { label:obj.objLabel, pluralLabel:obj.objLabel+'s', nameField:{label:'Name',type:'Text'}, deploymentStatus:'Deployed', sharingModel:'ReadWrite', description:obj.desc||'' }
+      });
+      if (status===201||status===200) { addLog('deploy-log',`[Object] ✓ Created: ${obj.objApi}`,'ok'); ok++; }
+      else {
+        const msg = Array.isArray(data)?data[0]?.message:data.message;
+        if (msg?.toLowerCase().includes('duplicate')) { addLog('deploy-log',`[Object] ⚠ Already exists: ${obj.objApi}`,'warn'); ok++; }
+        else { addLog('deploy-log',`[Object] ✕ Failed: ${msg}`,'err'); fail++; addLog('deploy-log','Rollback triggered — stopping.','err'); break; }
+      }
+    } catch(e) { addLog('deploy-log',`[Object] ✕ ${e.message}`,'err'); fail++; break; }
     await new Promise(r=>setTimeout(r,500));
   }
-  if(fail===0){
-    for(const f of allFields){
+
+  if (fail===0) {
+    for (const f of allFields) {
       addLog('deploy-log',`[Field] ${isDry?'(dry) ':''}${f.objApi}.${f.api} (${f.type})...`,'info');
-      if(isDry){addLog('deploy-log',`[Field] ✓ Would create: ${f.api}`,'ok');ok++;await new Promise(r=>setTimeout(r,80));continue;}
-      try{
-        const{status,data}=await sfCall('/services/data/v59.0/tooling/sobjects/CustomField/',{FullName:`${f.objApi}.${f.api}`,Metadata:buildFieldMeta(f)});
-        if(status===201||status===200){addLog('deploy-log',`[Field] ✓ ${f.api}`,'ok');ok++;}
-        else{const msg=Array.isArray(data)?data[0]?.message:data.message;if(msg?.toLowerCase().includes('duplicate')){addLog('deploy-log',`[Field] ⚠ Already exists: ${f.api}`,'warn');ok++;}else{addLog('deploy-log',`[Field] ✕ ${f.api}: ${msg}`,'err');fail++;addLog('deploy-log','Rollback triggered.','err');break;}}
-      }catch(e){addLog('deploy-log',`[Field] ✕ ${e.message}`,'err');fail++;break;}
+      if (isDry) { addLog('deploy-log',`[Field] ✓ Would create: ${f.api}`,'ok'); ok++; await new Promise(r=>setTimeout(r,80)); continue; }
+      try {
+        const {status,data} = await sfCall('/services/data/v59.0/tooling/sobjects/CustomField/', { FullName:`${f.objApi}.${f.api}`, Metadata:buildFieldMeta(f) });
+        if (status===201||status===200) { addLog('deploy-log',`[Field] ✓ ${f.api}`,'ok'); ok++; }
+        else {
+          const msg = Array.isArray(data)?data[0]?.message:data.message;
+          if (msg?.toLowerCase().includes('duplicate')) { addLog('deploy-log',`[Field] ⚠ Already exists: ${f.api}`,'warn'); ok++; }
+          else { addLog('deploy-log',`[Field] ✕ ${f.api}: ${msg}`,'err'); fail++; addLog('deploy-log','Rollback triggered.','err'); break; }
+        }
+      } catch(e) { addLog('deploy-log',`[Field] ✕ ${e.message}`,'err'); fail++; break; }
       await new Promise(r=>setTimeout(r,400));
     }
   }
-  addLog('deploy-log',`━━━ ${isDry?'DRY RUN':'DEPLOY'} COMPLETE — ✓ ${ok} | ✕ ${fail} ━━━`,fail===0?'ok':'err');
-  if(isDry&&fail===0)addLog('deploy-log','Validation passed. Uncheck Dry Run and click Deploy to apply.','warn');
-  document.getElementById('btn-dry').disabled=false;
-  document.getElementById('btn-deploy').disabled=false;
+
+  addLog('deploy-log',`━━━ ${isDry?'DRY RUN':'DEPLOY'} COMPLETE — ✓ ${ok} | ✕ ${fail} ━━━`, fail===0?'ok':'err');
+  if (isDry && fail===0) addLog('deploy-log','Validation passed. Uncheck Dry Run and click Deploy to apply changes.','warn');
+  document.getElementById('btn-dry').disabled = false;
+  document.getElementById('btn-deploy').disabled = false;
 }
 
-document.getElementById('dry-run').addEventListener('change',updateDeployPanel);
-addLog('conn-log','Ready. Enter your Salesforce credentials and click Connect.','info');
+document.getElementById('dry-run').addEventListener('change', updateDeployPanel);
+addLog('conn-log','Ready. Enter credentials and click Connect.','info');
 addLog('conn-log',`Proxy: ${PROXY}`,'info');
-addLog('conn-log','Tip: Open https://sf-proxy-ncj5.onrender.com/health first to wake the proxy.','warn');
+addLog('conn-log','Tip: Wake proxy first → open https://sf-proxy-ncj5.onrender.com/health in a new tab.','warn');
 updateStats(); refreshQueue();
 </script>
 </body>
