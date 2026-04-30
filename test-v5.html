@@ -1,0 +1,201 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>SF Translation Tester v5</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'IBM Plex Mono',monospace;background:#0a0a0f;color:#e8e8f0;font-size:12px;padding:20px;}
+h1{font-size:15px;color:#6c63ff;margin-bottom:12px;}
+.p{background:#12121a;border:1px solid #2a2a40;border-radius:8px;padding:14px;margin-bottom:12px;}
+label{font-size:10px;color:#8888aa;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:4px;margin-top:8px;}
+input{background:#0a0a0f;border:1px solid #3a3a55;border-radius:6px;color:#e8e8f0;font-family:'IBM Plex Mono',monospace;font-size:11px;padding:6px 8px;width:100%;}
+input:focus{outline:none;border-color:#6c63ff;}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.btn{padding:8px 16px;border-radius:6px;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:500;cursor:pointer;border:1px solid;margin-right:8px;margin-top:8px;}
+.ba{background:#6c63ff;border-color:#6c63ff;color:#fff;}.ba:hover{filter:brightness(1.15);}
+.bg{background:transparent;border-color:#3a3a55;color:#8888aa;}
+.btn:disabled{opacity:0.35;cursor:not-allowed;}
+#log{background:#0a0a0f;border:1px solid #2a2a40;border-radius:6px;padding:12px;max-height:700px;overflow-y:auto;font-size:11px;line-height:1.9;margin-top:12px;white-space:pre-wrap;}
+.ok{color:#00d4aa;display:block;}.err{color:#ff6b6b;display:block;}.warn{color:#f5c842;display:block;}.info{color:#8888aa;display:block;}.trans{color:#6c63ff;display:block;}
+</style>
+</head>
+<body>
+<h1>⚡ SF Translation Tester v5 — Isolating exact valid XML structure</h1>
+<div class="p">
+  <div class="g2">
+    <div><label>Proxy</label><input id="proxy" value="https://sf-proxy-ncj5.onrender.com"/></div>
+    <div><label>Instance</label><input id="inst" value="https://orgfarm-f9bef0820c-dev-ed.develop.my.salesforce.com"/></div>
+  </div>
+  <label>Access Token</label><input type="password" id="tok" placeholder="00DgK..."/>
+  <div class="g2">
+    <div><label>Object</label><input id="obj" value="Account"/></div>
+    <div><label>Field (with __c)</label><input id="fld" value="sadsad1231231__c"/></div>
+  </div>
+  <label>Hebrew Label</label><input id="heb" value="שדגשדגשדג" dir="rtl"/>
+  <div>
+    <button class="btn ba" id="btn" onclick="runAll()">▶ Run all variations</button>
+    <button class="btn bg" onclick="document.getElementById('log').innerHTML=''">Clear</button>
+  </div>
+</div>
+<div id="log">Click Run...</div>
+<script>
+function ts(){const n=new Date();return`${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}:${String(n.getSeconds()).padStart(2,'0')}`;}
+function log(msg,cls='info'){const b=document.getElementById('log');const s=document.createElement('span');s.className=cls;s.textContent=`${ts()} ${msg}`;b.appendChild(s);b.scrollTop=b.scrollHeight;}
+function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+function vals(){return{proxy:document.getElementById('proxy').value.trim().replace(/\/$/,''),inst:document.getElementById('inst').value.trim().replace(/\/$/,''),tok:document.getElementById('tok').value.trim(),obj:document.getElementById('obj').value.trim(),fld:document.getElementById('fld').value.trim(),heb:document.getElementById('heb').value.trim()};}
+
+async function deployZip(proxy,inst,tok,transXML,label){
+  const pkgXML=`<?xml version="1.0" encoding="UTF-8"?>\n<Package xmlns="http://soap.sforce.com/2006/04/metadata">\n  <types>\n    <members>he</members>\n    <name>Translations</name>\n  </types>\n  <version>59.0</version>\n</Package>`;
+  const zip=new JSZip();
+  zip.file('translations/he.translation-meta.xml',transXML);
+  zip.file('package.xml',pkgXML);
+  const base64=await zip.generateAsync({type:'base64'});
+  const deploySOAP=`<?xml version="1.0" encoding="UTF-8"?><soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:met="http://soap.sforce.com/2006/04/metadata"><soapenv:Header><met:SessionHeader><met:sessionId>${tok}</met:sessionId></met:SessionHeader></soapenv:Header><soapenv:Body><met:deploy><met:ZipFile>${base64}</met:ZipFile><met:DeployOptions><met:checkOnly>false</met:checkOnly><met:rollbackOnError>false</met:rollbackOnError><met:singlePackage>true</met:singlePackage><met:ignoreWarnings>true</met:ignoreWarnings></met:DeployOptions></met:deploy></soapenv:Body></soapenv:Envelope>`;
+  const r=await fetch(proxy+'/metadata-deploy',{method:'POST',headers:{'Content-Type':'text/xml','x-sf-instance':inst,'x-sf-token':tok},body:deploySOAP});
+  const text=await r.text();
+  if(!text.includes('<id>'))return{success:false,error:'No deploy ID: '+text.substring(0,200)};
+  const asyncId=text.match(/<id>(.*?)<\/id>/)?.[1];
+  log(`  Deploy ID: ${asyncId}`,'info');
+  const statusSOAP=`<?xml version="1.0" encoding="UTF-8"?><soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:met="http://soap.sforce.com/2006/04/metadata"><soapenv:Header><met:SessionHeader><met:sessionId>${tok}</met:sessionId></met:SessionHeader></soapenv:Header><soapenv:Body><met:checkDeployStatus><met:asyncProcessId>${asyncId}</met:asyncProcessId><met:includeDetails>true</met:includeDetails></met:checkDeployStatus></soapenv:Body></soapenv:Envelope>`;
+  for(let i=0;i<8;i++){
+    await sleep(4000);
+    const sr=await fetch(proxy+'/metadata-deploy',{method:'POST',headers:{'Content-Type':'text/xml','x-sf-instance':inst,'x-sf-token':tok},body:statusSOAP});
+    const st=await sr.text();
+    const done=st.includes('<done>true</done>');
+    const state=st.match(/<state>(.*?)<\/state>/)?.[1]||'?';
+    const problem=st.match(/<problem>(.*?)<\/problem>/)?.[1]||'';
+    if(done){
+      const success=state==='Succeeded'||st.includes('<numberComponentErrors>0</numberComponentErrors>');
+      return{success,state,problem,full:st.substring(0,600)};
+    }
+    log(`  Poll ${i}: ${state}`,'info');
+  }
+  return{success:false,error:'Timeout'};
+}
+
+async function tryVariant(label,xml,proxy,inst,tok){
+  log(`\nVARIANT: ${label}`,'trans');
+  log(`XML:\n${xml}`,'info');
+  try{
+    const r=await deployZip(proxy,inst,tok,xml,label);
+    if(r.success)log(`✓ SUCCESS: ${label}`,'ok');
+    else log(`✕ FAILED: ${r.state||''} | ${r.problem||r.error||''}`,'err');
+    if(r.full)log(`Full response: ${r.full}`,'info');
+    return r.success;
+  }catch(e){log(`✕ Error: ${e.message}`,'err');return false;}
+}
+
+async function runAll(){
+  document.getElementById('log').innerHTML='';
+  const btn=document.getElementById('btn');btn.disabled=true;btn.textContent='Running...';
+  const{proxy,inst,tok,obj,fld,heb}=vals();
+  const dev=fld.replace(/__c$/i,'');
+  const devWithC=fld; // with __c
+  if(!tok){log('Paste token first','err');btn.disabled=false;btn.textContent='▶ Run all variations';return;}
+
+  // V1: Just customObjects, no fields (isolate if object tag is valid)
+  await tryVariant('Empty customObjects (no fields)',
+`<?xml version="1.0" encoding="UTF-8"?>
+<Translations xmlns="http://soap.sforce.com/2006/04/metadata">
+  <customObjects>
+    <name>${obj}</name>
+  </customObjects>
+</Translations>`,proxy,inst,tok);
+  await sleep(1000);
+
+  // V2: customObjects with field name INCLUDING __c
+  await tryVariant('customObjects with __c on field name',
+`<?xml version="1.0" encoding="UTF-8"?>
+<Translations xmlns="http://soap.sforce.com/2006/04/metadata">
+  <customObjects>
+    <name>${obj}</name>
+    <customFields>
+      <name>${devWithC}</name>
+      <label>${heb}</label>
+    </customFields>
+  </customObjects>
+</Translations>`,proxy,inst,tok);
+  await sleep(1000);
+
+  // V3: API version 60.0
+  await tryVariant('API version 60.0 in package.xml',
+`<?xml version="1.0" encoding="UTF-8"?>
+<Translations xmlns="http://soap.sforce.com/2006/04/metadata">
+  <customObjects>
+    <name>${obj}</name>
+    <customFields>
+      <name>${dev}</name>
+      <label>${heb}</label>
+    </customFields>
+  </customObjects>
+</Translations>`,proxy,inst,tok);
+  await sleep(1000);
+
+  // V4: No XML declaration
+  await tryVariant('No XML declaration header',
+`<Translations xmlns="http://soap.sforce.com/2006/04/metadata">
+  <customObjects>
+    <name>${obj}</name>
+    <customFields>
+      <name>${dev}</name>
+      <label>${heb}</label>
+    </customFields>
+  </customObjects>
+</Translations>`,proxy,inst,tok);
+  await sleep(1000);
+
+  // V5: With encoding declaration utf-8 lowercase
+  await tryVariant('Lowercase utf-8 encoding',
+`<?xml version="1.0" encoding="utf-8"?>
+<Translations xmlns="http://soap.sforce.com/2006/04/metadata">
+  <customObjects>
+    <name>${obj}</name>
+    <customFields>
+      <name>${dev}</name>
+      <label>${heb}</label>
+    </customFields>
+  </customObjects>
+</Translations>`,proxy,inst,tok);
+  await sleep(1000);
+
+  // V6: Custom object instead of standard object
+  const customObj=obj.endsWith('__c')?obj:obj+'__c';
+  await tryVariant(`Using custom object name (${customObj})`,
+`<?xml version="1.0" encoding="UTF-8"?>
+<Translations xmlns="http://soap.sforce.com/2006/04/metadata">
+  <customObjects>
+    <name>${customObj}</name>
+    <customFields>
+      <name>${dev}</name>
+      <label>${heb}</label>
+    </customFields>
+  </customObjects>
+</Translations>`,proxy,inst,tok);
+  await sleep(1000);
+
+  // V7: No customObjects, customFields at top level with Object.Field name
+  await tryVariant('No customObjects — customFields at top level with Object.Field',
+`<?xml version="1.0" encoding="UTF-8"?>
+<Translations xmlns="http://soap.sforce.com/2006/04/metadata">
+  <customFields>
+    <name>${obj}.${dev}</name>
+    <label>${heb}</label>
+  </customFields>
+</Translations>`,proxy,inst,tok);
+  await sleep(1000);
+
+  // V8: Completely empty translations file
+  await tryVariant('Completely empty Translations element',
+`<?xml version="1.0" encoding="UTF-8"?>
+<Translations xmlns="http://soap.sforce.com/2006/04/metadata">
+</Translations>`,proxy,inst,tok);
+
+  log('\n─────────────────────────────────────────','info');
+  log('All variations done — paste results in Claude','trans');
+  btn.disabled=false;btn.textContent='▶ Run all variations';
+}
+</script>
+</body>
+</html>
