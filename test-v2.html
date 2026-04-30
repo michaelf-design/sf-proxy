@@ -1,0 +1,199 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>SF Translation Tester v2</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'IBM Plex Mono',monospace;background:#0a0a0f;color:#e8e8f0;font-size:12px;padding:20px;}
+h1{font-size:16px;color:#6c63ff;margin-bottom:16px;}
+.panel{background:#12121a;border:1px solid #2a2a40;border-radius:8px;padding:14px;margin-bottom:12px;}
+label{font-size:10px;color:#8888aa;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:4px;margin-top:8px;}
+input{background:#0a0a0f;border:1px solid #3a3a55;border-radius:6px;color:#e8e8f0;font-family:'IBM Plex Mono',monospace;font-size:11px;padding:6px 8px;width:100%;}
+input:focus{outline:none;border-color:#6c63ff;}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.btn{padding:8px 16px;border-radius:6px;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:500;cursor:pointer;border:1px solid;margin-right:8px;margin-top:8px;display:inline-block;}
+.btn-accent{background:#6c63ff;border-color:#6c63ff;color:#fff;}
+.btn-accent:hover{filter:brightness(1.15);}
+.btn-ghost{background:transparent;border-color:#3a3a55;color:#8888aa;}
+.btn-ghost:hover{border-color:#6c63ff;color:#e8e8f0;}
+.btn:disabled{opacity:0.35;cursor:not-allowed;}
+#log{background:#0a0a0f;border:1px solid #2a2a40;border-radius:6px;padding:12px;max-height:700px;overflow-y:auto;font-size:11px;line-height:1.9;margin-top:12px;}
+.ok{color:#00d4aa;display:block;}
+.err{color:#ff6b6b;display:block;}
+.warn{color:#f5c842;display:block;}
+.info{color:#8888aa;display:block;}
+.trans{color:#6c63ff;display:block;}
+</style>
+</head>
+<body>
+<h1>⚡ SF Translation Tester v2 — createMetadata + updateMetadata</h1>
+
+<div class="panel">
+  <div class="g2">
+    <div><label>Proxy URL</label><input id="proxy" value="https://sf-proxy-ncj5.onrender.com"/></div>
+    <div><label>Instance URL</label><input id="inst" value="https://orgfarm-f9bef0820c-dev-ed.develop.my.salesforce.com"/></div>
+  </div>
+  <label>Access Token — open main app → browser Console (F12) → type: S.token → copy value</label>
+  <input type="password" id="tok" placeholder="00DgK..."/>
+  <div class="g2">
+    <div><label>Object API Name</label><input id="obj" value="Account"/></div>
+    <div><label>Field API Name (with __c)</label><input id="fld" value="sadsad123123__c"/></div>
+  </div>
+  <label>Hebrew Label</label>
+  <input id="heb" value="שדגשדגשדג" dir="rtl"/>
+  <div>
+    <button class="btn btn-accent" id="btn-all" onclick="runAll()">▶ Run all tests</button>
+    <button class="btn btn-ghost" onclick="document.getElementById('log').innerHTML=''">Clear</button>
+    <button class="btn btn-ghost" onclick="pingProxy()">Ping proxy</button>
+  </div>
+</div>
+
+<div id="log">Click "Run all tests" to begin...</div>
+
+<script>
+function ts(){const n=new Date();return`${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}:${String(n.getSeconds()).padStart(2,'0')}`;}
+function log(msg,cls='info'){
+  const box=document.getElementById('log');
+  const s=document.createElement('span');
+  s.className=cls;
+  s.textContent=`${ts()} ${msg}`;
+  box.appendChild(s);
+  box.scrollTop=box.scrollHeight;
+}
+function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+
+function getVals(){
+  return{
+    proxy:document.getElementById('proxy').value.trim().replace(/\/$/,''),
+    inst:document.getElementById('inst').value.trim().replace(/\/$/,''),
+    tok:document.getElementById('tok').value.trim(),
+    obj:document.getElementById('obj').value.trim(),
+    fld:document.getElementById('fld').value.trim(),
+    heb:document.getElementById('heb').value.trim(),
+  };
+}
+
+async function soapCall(proxy,inst,tok,body){
+  const r=await fetch(proxy+'/metadata-deploy',{
+    method:'POST',
+    headers:{'Content-Type':'text/xml','x-sf-instance':inst,'x-sf-token':tok},
+    body
+  });
+  return{status:r.status,text:await r.text()};
+}
+
+async function pingProxy(){
+  const{proxy}=getVals();
+  try{
+    const r=await fetch(proxy+'/health');
+    log('Proxy: '+JSON.stringify(await r.json()),'ok');
+  }catch(e){log('Proxy error: '+e.message,'err');}
+}
+
+async function runAll(){
+  document.getElementById('log').innerHTML='';
+  const btn=document.getElementById('btn-all');
+  btn.disabled=true;btn.textContent='Running...';
+  const{proxy,inst,tok,obj,fld,heb}=getVals();
+  const dev=fld.replace(/__c$/i,'');
+  if(!tok){log('Paste your access token first','err');btn.disabled=false;btn.textContent='▶ Run all tests';return;}
+
+  log(`Proxy: ${proxy}`,'info');
+  log(`Instance: ${inst}`,'info');
+  log(`Object: ${obj} | Field: ${fld} | Dev name: ${dev} | Hebrew: ${heb}`,'info');
+  log('─────────────────────────────────────────','info');
+
+  // READ — check if he record exists
+  log('TEST 1 — readMetadata: check if he translation exists','trans');
+  const readSOAP=`<?xml version="1.0" encoding="UTF-8"?><soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:met="http://soap.sforce.com/2006/04/metadata"><soapenv:Header><met:SessionHeader><met:sessionId>${tok}</met:sessionId></met:SessionHeader></soapenv:Header><soapenv:Body><met:readMetadata><met:type>Translations</met:type><met:fullNames>he</met:fullNames></met:readMetadata></soapenv:Body></soapenv:Envelope>`;
+  try{
+    const{status,text}=await soapCall(proxy,inst,tok,readSOAP);
+    log(`Status: ${status}`,'info');
+    log(`Response: ${text.substring(0,500)}`,'info');
+    const recordExists=text.includes('readMetadataResponse')&&!text.includes('xsi:nil="true"');
+    log(`He translation record exists in org: ${recordExists}`,'info');
+    if(recordExists) log('✓ Record exists — will use updateMetadata','ok');
+    else log('⚠ Record does NOT exist — will use createMetadata','warn');
+  }catch(e){log('✕ '+e.message,'err');}
+  await sleep(800);
+  log('─────────────────────────────────────────','info');
+
+  // CREATE — try createMetadata
+  log('TEST 2 — createMetadata(he) — works when record does not exist','trans');
+  const createSOAP=`<?xml version="1.0" encoding="UTF-8"?><soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:met="http://soap.sforce.com/2006/04/metadata" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><soapenv:Header><met:SessionHeader><met:sessionId>${tok}</met:sessionId></met:SessionHeader></soapenv:Header><soapenv:Body><met:createMetadata><met:metadata xsi:type="met:Translations"><met:fullName>he</met:fullName><met:customObjects><met:name>${obj}</met:name><met:customFields><met:name>${dev}</met:name><met:label>${heb}</met:label></met:customFields></met:customObjects></met:metadata></met:createMetadata></soapenv:Body></soapenv:Envelope>`;
+  try{
+    const{status,text}=await soapCall(proxy,inst,tok,createSOAP);
+    log(`Status: ${status}`,'info');
+    log(`Response: ${text.substring(0,600)}`,'info');
+    if(text.includes('<success>true</success>')) log('✓ createMetadata SUCCESS! Hebrew label saved.','ok');
+    else if(text.includes('faultstring')) log('✕ Fault: '+(text.match(/<faultstring>(.*?)<\/faultstring>/)?.[1]||'?'),'err');
+    else log('Response: '+text,'warn');
+  }catch(e){log('✕ '+e.message,'err');}
+  await sleep(800);
+  log('─────────────────────────────────────────','info');
+
+  // UPDATE — try updateMetadata (works when record already exists)
+  log('TEST 3 — updateMetadata(he) — works when record already exists','trans');
+  const updateSOAP=`<?xml version="1.0" encoding="UTF-8"?><soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:met="http://soap.sforce.com/2006/04/metadata" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><soapenv:Header><met:SessionHeader><met:sessionId>${tok}</met:sessionId></met:SessionHeader></soapenv:Header><soapenv:Body><met:updateMetadata><met:metadata xsi:type="met:Translations"><met:fullName>he</met:fullName><met:customObjects><met:name>${obj}</met:name><met:customFields><met:name>${dev}</met:name><met:label>${heb}</met:label></met:customFields></met:customObjects></met:metadata></met:updateMetadata></soapenv:Body></soapenv:Envelope>`;
+  try{
+    const{status,text}=await soapCall(proxy,inst,tok,updateSOAP);
+    log(`Status: ${status}`,'info');
+    log(`Response: ${text.substring(0,600)}`,'info');
+    if(text.includes('<success>true</success>')) log('✓ updateMetadata SUCCESS!','ok');
+    else if(text.includes('faultstring')) log('✕ Fault: '+(text.match(/<faultstring>(.*?)<\/faultstring>/)?.[1]||'?'),'err');
+  }catch(e){log('✕ '+e.message,'err');}
+  await sleep(800);
+  log('─────────────────────────────────────────','info');
+
+  // VERIFY — read again to confirm
+  log('TEST 4 — Verify: readMetadata again to confirm label saved','trans');
+  try{
+    const{status,text}=await soapCall(proxy,inst,tok,readSOAP);
+    log(`Status: ${status}`,'info');
+    log(`Response: ${text.substring(0,800)}`,'info');
+    if(text.includes(dev)&&text.includes(heb)){
+      log(`✓ CONFIRMED: "${heb}" saved for ${obj}.${dev}!`,'ok');
+    }else if(text.includes(dev)){
+      log('⚠ Field found but Hebrew label not matching — check response above','warn');
+    }else if(text.includes('xsi:nil="true"')){
+      log('✕ Translation record still empty','err');
+    }else{
+      log('Check response above for details','warn');
+    }
+  }catch(e){log('✕ '+e.message,'err');}
+  await sleep(800);
+  log('─────────────────────────────────────────','info');
+
+  // SMART — createMetadata first, if duplicate then updateMetadata
+  log('TEST 5 — SMART: auto create-or-update (this is what the app should do)','trans');
+  try{
+    const{status:cs,text:ct}=await soapCall(proxy,inst,tok,createSOAP);
+    log(`createMetadata status: ${cs}`,'info');
+    if(ct.includes('<success>true</success>')){
+      log('✓ Created successfully (was new)','ok');
+    }else{
+      const fault=ct.match(/<faultstring>(.*?)<\/faultstring>/)?.[1]||'';
+      if(fault.toLowerCase().includes('duplicate')||fault.toLowerCase().includes('already exists')||cs===500){
+        log('Record exists — switching to updateMetadata...','warn');
+        await sleep(400);
+        const{status:us,text:ut}=await soapCall(proxy,inst,tok,updateSOAP);
+        log(`updateMetadata status: ${us}`,'info');
+        log(`updateMetadata response: ${ut.substring(0,400)}`,'info');
+        if(ut.includes('<success>true</success>')) log('✓ Updated successfully','ok');
+        else log('✕ Update failed: '+(ut.match(/<faultstring>(.*?)<\/faultstring>/)?.[1]||ut.substring(0,200)),'err');
+      }else{
+        log(`✕ Create fault: ${fault}`,'err');
+        log(`Full response: ${ct.substring(0,400)}`,'warn');
+      }
+    }
+  }catch(e){log('✕ '+e.message,'err');}
+
+  log('─────────────────────────────────────────','info');
+  log('All tests complete — paste these results in Claude','trans');
+  btn.disabled=false;btn.textContent='▶ Run all tests';
+}
+</script>
+</body>
+</html>
