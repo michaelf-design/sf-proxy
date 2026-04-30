@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>SF Translation Tester</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'IBM Plex Mono',monospace;background:#0a0a0f;color:#e8e8f0;font-size:12px;padding:20px;}
+h1{font-size:16px;margin-bottom:16px;color:#6c63ff;}
+.panel{background:#12121a;border:1px solid #2a2a40;border-radius:8px;padding:14px;margin-bottom:12px;}
+label{font-size:10px;color:#8888aa;text-transform:uppercase;letter-spacing:0.06em;display:block;margin-bottom:4px;}
+input{background:#0a0a0f;border:1px solid #3a3a55;border-radius:6px;color:#e8e8f0;font-family:'IBM Plex Mono',monospace;font-size:11px;padding:6px 8px;width:100%;margin-bottom:8px;}
+input:focus{outline:none;border-color:#6c63ff;}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+.btn{padding:8px 16px;border-radius:6px;font-family:'IBM Plex Mono',monospace;font-size:11px;font-weight:500;cursor:pointer;border:1px solid;margin-right:8px;margin-top:4px;}
+.btn-accent{background:#6c63ff;border-color:#6c63ff;color:#fff;}
+.btn-accent:hover{filter:brightness(1.15);}
+.btn-ghost{background:transparent;border-color:#3a3a55;color:#8888aa;}
+.btn-ghost:hover{border-color:#6c63ff;color:#e8e8f0;}
+.btn:disabled{opacity:0.35;cursor:not-allowed;}
+#log{background:#0a0a0f;border:1px solid #2a2a40;border-radius:6px;padding:12px;max-height:600px;overflow-y:auto;font-size:11px;line-height:1.9;white-space:pre-wrap;margin-top:12px;}
+.ok{color:#00d4aa;}
+.err{color:#ff6b6b;}
+.warn{color:#f5c842;}
+.info{color:#8888aa;}
+.trans{color:#6c63ff;}
+</style>
+</head>
+<body>
+<h1>⚡ SF Translation API Tester</h1>
+<div class="panel">
+  <div class="g2">
+    <div>
+      <label>Proxy URL</label>
+      <input id="proxy" value="https://sf-proxy-ncj5.onrender.com" />
+    </div>
+    <div>
+      <label>Instance URL</label>
+      <input id="instance" value="https://orgfarm-f9bef0820c-dev-ed.develop.my.salesforce.com" />
+    </div>
+  </div>
+  <label>Access Token (open main app → browser Console F12 → type: S.token → copy value)</label>
+  <input type="password" id="token" placeholder="00DgK..." />
+  <div class="g2">
+    <div><label>Object API Name</label><input id="obj" value="Account" /></div>
+    <div><label>Field API Name (with __c)</label><input id="field" value="sadsad__c" /></div>
+  </div>
+  <label>Hebrew Label</label>
+  <input id="heb" value="שדה בדיקה" dir="rtl" />
+  <div style="margin-top:8px;">
+    <button class="btn btn-accent" id="run-btn" onclick="runAll()">▶ Run all tests</button>
+    <button class="btn btn-ghost" onclick="document.getElementById('log').innerHTML=''">Clear</button>
+    <button class="btn btn-ghost" onclick="wakeProxy()">Ping proxy</button>
+  </div>
+</div>
+<div id="log">Click "Run all tests" to start...</div>
+<script>
+function ts(){const n=new Date();return`${String(n.getHours()).padStart(2,'0')}:${String(n.getMinutes()).padStart(2,'0')}:${String(n.getSeconds()).padStart(2,'0')}`;}
+function log(msg,cls='info'){
+  const box=document.getElementById('log');
+  const span=document.createElement('span');
+  span.className=cls;span.textContent=`${ts()} ${msg}\n`;
+  box.appendChild(span);box.scrollTop=box.scrollHeight;
+}
+function sleep(ms){return new Promise(r=>setTimeout(r,ms));}
+async function wakeProxy(){
+  try{const r=await fetch(document.getElementById('proxy').value+'/health');log('Proxy: '+JSON.stringify(await r.json()),'ok');}
+  catch(e){log('Proxy error: '+e.message,'err');}
+}
+async function runAll(){
+  document.getElementById('log').innerHTML='';
+  const btn=document.getElementById('run-btn');btn.disabled=true;btn.textContent='Running...';
+  const proxy=document.getElementById('proxy').value.trim().replace(/\/$/,'');
+  const instance=document.getElementById('instance').value.trim().replace(/\/$/,'');
+  const token=document.getElementById('token').value.trim();
+  const obj=document.getElementById('obj').value.trim();
+  const field=document.getElementById('field').value.trim();
+  const heb=document.getElementById('heb').value.trim();
+  const dev=field.replace(/__c$/i,'');
+  if(!token){log('Paste your access token first','err');btn.disabled=false;btn.textContent='▶ Run all tests';return;}
+  const hdrs={'Content-Type':'text/xml','x-sf-instance':instance,'x-sf-token':token};
+  log('Proxy: '+proxy,'info');log('Instance: '+instance,'info');
+  log('Object: '+obj+' | Field: '+field+' | Dev name: '+dev+' | Hebrew: '+heb,'info');
+  log('─────────────────────────────────────────','info');
+
+  // TEST A
+  log('TEST A — readMetadata(Translations/he)','trans');
+  const readSOAP=`<?xml version="1.0" encoding="UTF-8"?><soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:met="http://soap.sforce.com/2006/04/metadata"><soapenv:Header><met:SessionHeader><met:sessionId>${token}</met:sessionId></met:SessionHeader></soapenv:Header><soapenv:Body><met:readMetadata><met:type>Translations</met:type><met:fullNames>he</met:fullNames></met:readMetadata></soapenv:Body></soapenv:Envelope>`;
+  try{
+    const r=await fetch(proxy+'/metadata-deploy',{method:'POST',headers:hdrs,body:readSOAP});
+    const text=await r.text();log('Status: '+r.status,'info');log('Response: '+text.substring(0,800),'info');
+    if(text.includes('readMetadataResponse'))log('✓ readMetadata WORKS','ok');
+    else if(text.includes('faultstring'))log('✕ Fault: '+(text.match(/<faultstring>(.*?)<\/faultstring>/)?.[1]||'?'),'err');
+  }catch(e){log('✕ '+e.message,'err');}
+  await sleep(800);log('─────────────────────────────────────────','info');
+
+  // TEST B
+  log('TEST B — updateMetadata(he)','trans');
+  const updateSOAP=`<?xml version="1.0" encoding="UTF-8"?><soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:met="http://soap.sforce.com/2006/04/metadata" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><soapenv:Header><met:SessionHeader><met:sessionId>${token}</met:sessionId></met:SessionHeader></soapenv:Header><soapenv:Body><met:updateMetadata><met:metadata xsi:type="met:Translations"><met:fullName>he</met:fullName><met:customObjects><met:name>${obj}</met:name><met:customFields><met:name>${dev}</met:name><met:label>${heb}</met:label></met:customFields></met:customObjects></met:metadata></met:updateMetadata></soapenv:Body></soapenv:Envelope>`;
+  try{
+    const r=await fetch(proxy+'/metadata-deploy',{method:'POST',headers:hdrs,body:updateSOAP});
+    const text=await r.text();log('Status: '+r.status,'info');log('Response: '+text.substring(0,800),'info');
+    if(text.includes('<success>true</success>'))log('✓ updateMetadata SUCCESS!','ok');
+    else if(text.includes('faultstring'))log('✕ Fault: '+(text.match(/<faultstring>(.*?)<\/faultstring>/)?.[1]||'?'),'err');
+    else log('Response: '+text.substring(0,400),'warn');
+  }catch(e){log('✕ '+e.message,'err');}
+  await sleep(800);log('─────────────────────────────────────────','info');
+
+  // TEST C
+  log('TEST C — upsertMetadata(he)','trans');
+  const upsertSOAP=`<?xml version="1.0" encoding="UTF-8"?><soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:met="http://soap.sforce.com/2006/04/metadata" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"><soapenv:Header><met:SessionHeader><met:sessionId>${token}</met:sessionId></met:SessionHeader></soapenv:Header><soapenv:Body><met:upsertMetadata><met:metadata xsi:type="met:Translations"><met:fullName>he</met:fullName><met:customObjects><met:name>${obj}</met:name><met:customFields><met:name>${dev}</met:name><met:label>${heb}</met:label></met:customFields></met:customObjects></met:metadata></met:upsertMetadata></soapenv:Body></soapenv:Envelope>`;
+  try{
+    const r=await fetch(proxy+'/metadata-deploy',{method:'POST',headers:hdrs,body:upsertSOAP});
+    const text=await r.text();log('Status: '+r.status,'info');log('Response: '+text.substring(0,800),'info');
+    if(text.includes('<success>true</success>'))log('✓ upsertMetadata SUCCESS!','ok');
+    else if(text.includes('faultstring'))log('✕ Fault: '+(text.match(/<faultstring>(.*?)<\/faultstring>/)?.[1]||'?'),'err');
+  }catch(e){log('✕ '+e.message,'err');}
+  await sleep(800);log('─────────────────────────────────────────','info');
+
+  // TEST D - ZIP deploy
+  log('TEST D — ZIP deploy (he.translation-meta.xml)','trans');
+  try{
+    const transXML='<?xml version="1.0" encoding="UTF-8"?>\n<Translations xmlns="http://soap.sforce.com/2006/04/metadata">\n  <customObjects>\n    <name>'+obj+'</name>\n    <customFields>\n      <name>'+dev+'</name>\n      <label>'+heb+'</label>\n    </customFields>\n  </customObjects>\n</Translations>';
+    const pkgXML='<?xml version="1.0" encoding="UTF-8"?>\n<Package xmlns="http://soap.sforce.com/2006/04/metadata">\n  <types>\n    <members>he</members>\n    <name>Translations</name>\n  </types>\n  <version>59.0</version>\n</Package>';
+    log('Translation XML:\n'+transXML,'info');
+    const zip=new JSZip();
+    zip.file('translations/he.translation-meta.xml',transXML);
+    zip.file('package.xml',pkgXML);
+    const base64=await zip.generateAsync({type:'base64'});
+    log('ZIP built: '+base64.length+' chars','info');
+    const deploySOAP=`<?xml version="1.0" encoding="UTF-8"?><soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:met="http://soap.sforce.com/2006/04/metadata"><soapenv:Header><met:SessionHeader><met:sessionId>${token}</met:sessionId></met:SessionHeader></soapenv:Header><soapenv:Body><met:deploy><met:ZipFile>${base64}</met:ZipFile><met:DeployOptions><met:checkOnly>false</met:checkOnly><met:rollbackOnError>true</met:rollbackOnError><met:singlePackage>true</met:singlePackage><met:ignoreWarnings>true</met:ignoreWarnings></met:DeployOptions></met:deploy></soapenv:Body></soapenv:Envelope>`;
+    const r=await fetch(proxy+'/metadata-deploy',{method:'POST',headers:hdrs,body:deploySOAP});
+    const text=await r.text();log('Deploy status: '+r.status,'info');
+    if(text.includes('<id>')){
+      const asyncId=text.match(/<id>(.*?)<\/id>/)?.[1];
+      log('Async ID: '+asyncId,'trans');
+      const statusSOAP=`<?xml version="1.0" encoding="UTF-8"?><soapenv:Envelope xmlns:soapenv="http://schemas.xmlsoap.org/soap/envelope/" xmlns:met="http://soap.sforce.com/2006/04/metadata"><soapenv:Header><met:SessionHeader><met:sessionId>${token}</met:sessionId></met:SessionHeader></soapenv:Header><soapenv:Body><met:checkDeployStatus><met:asyncProcessId>${asyncId}</met:asyncProcessId><met:includeDetails>true</met:includeDetails></met:checkDeployStatus></soapenv:Body></soapenv:Envelope>`;
+      for(let i=0;i<12;i++){
+        await sleep(4000);
+        const r2=await fetch(proxy+'/metadata-deploy',{method:'POST',headers:hdrs,body:statusSOAP});
+        const t2=await r2.text();
+        const done=t2.includes('<done>true</done>');
+        const success=t2.includes('<success>true</success>');
+        const st=t2.match(/<status>(.*?)<\/status>/)?.[1]||'?';
+        const prob=t2.match(/<problem>(.*?)<\/problem>/)?.[1]||'';
+        log('Poll '+i+': '+st+(prob?' | '+prob:''),'info');
+        if(done){
+          if(success)log('✓ ZIP DEPLOY SUCCESS!','ok');
+          else log('✕ ZIP failed:\n'+t2.substring(0,1000),'err');
+          break;
+        }
+      }
+    }else{log('No async ID:\n'+text.substring(0,500),'err');}
+  }catch(e){log('✕ '+e.message,'err');}
+
+  log('─────────────────────────────────────────','info');
+  log('All tests complete!','trans');
+  btn.disabled=false;btn.textContent='▶ Run all tests';
+}
+</script>
+</body>
+</html>
